@@ -219,6 +219,7 @@ function renderSels(detail) {
 
     const x = document.createElement("button");
     x.className = "x"; x.textContent = "✕"; x.title = "이 규칙 삭제";
+    x.setAttribute("aria-label", "이 규칙 삭제");
     x.addEventListener("click", () => removeSelector(d.sel));
 
     row.append(t, b, x);

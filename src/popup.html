@@ -6,7 +6,7 @@
   /* 시안 A 출처 색 (D047). 색은 진단 테두리 다섯 색과 그 바탕만 쓴다 */
   :root {
     --bg: #ffffff; --ink: #1d2126; --muted: #69717c; --line: #dde1e6; --soft: #eef0f3;
-    --accent: #2d7ff9; --on-accent: #fff; --danger: #c0392b; --knob: #fff; --track: #c4c9d0;
+    --accent: #1a68d6; --on-accent: #fff; --danger: #c0392b; --knob: #fff; --track: #878e98;
     --c-custom: #2d7ff9; --c-base: #e74c3c; --c-ex: #27ae60; --c-text: #e67e22; --c-will: #7f8c8d;
     --ok-bg: #e8f1fe; --bad-bg: #fdecea;
     --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
@@ -14,7 +14,7 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #1d2024; --ink: #e7e9ec; --muted: #9aa1ab; --line: #2e3238; --soft: #252930;
-      --accent: #5c9dff; --on-accent: #0d1420; --danger: #ef7a70; --knob: #e7e9ec; --track: #464b53;
+      --accent: #5c9dff; --on-accent: #0d1420; --danger: #ef7a70; --knob: #e7e9ec; --track: #6b717a;
       --ok-bg: #1c2b44; --bad-bg: #3a2220;
     }
   }
@@ -63,6 +63,8 @@
   .lg.z { opacity: .4; }
   .custom { color: var(--c-custom); } .base { color: var(--c-base); } .ex { color: var(--c-ex); }
   .text { color: var(--c-text); } .will { color: var(--c-will); }
+  /* 출처 색은 선 견본에만. 이름 글자는 대비를 위해 회색 (D072) */
+  .lg .t { color: var(--muted); }
   .lg.ex::before { border-top-style: solid; } .lg.will::before { border-top-style: dotted; }
   #ratio .custom { background: var(--c-custom); } #ratio .base { background: var(--c-base); } #ratio .ex { background: var(--c-ex); }
   #ratio .text { background: var(--c-text); } #ratio .will { background: var(--c-will); }
@@ -120,7 +122,7 @@
     <button class="btn" id="reset">사이트 초기화</button>
     <button class="btn" id="opts">전체 설정</button>
   </div>
-  <div id="msg"></div>
+  <div id="msg" role="status"></div>
   <script src="common.js"></script>
   <script src="popup.js"></script>
 </body>

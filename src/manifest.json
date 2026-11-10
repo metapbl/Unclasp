@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Unclasp",
-  "version": "1.22.1",
+  "version": "1.22.2",
   "description": "배너 숨기기, 우클릭·복사 방지 해제, 백스페이스 뒤로가기를 사이트별로 제어합니다.",
   "browser_specific_settings": {
     "gecko": { "id": "unclasp@localhost", "strict_min_version": "128.0" }
