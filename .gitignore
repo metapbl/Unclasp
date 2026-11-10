@@ -21,3 +21,8 @@ tor/
 node_modules/
 test-results/
 playwright-report/
+
+# 개발 기록 (로컬에만 둔다, D071)
+docs/
+CLAUDE.md
+.claude/
