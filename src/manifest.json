@@ -1,0 +1,53 @@
+{
+  "manifest_version": 3,
+  "name": "Unclasp",
+  "version": "1.22.1",
+  "description": "배너 숨기기, 우클릭·복사 방지 해제, 백스페이스 뒤로가기를 사이트별로 제어합니다.",
+  "browser_specific_settings": {
+    "gecko": { "id": "unclasp@localhost", "strict_min_version": "128.0" }
+  },
+  "permissions": ["storage", "activeTab", "scripting"],
+  "background": { "service_worker": "background.js" },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Unclasp",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+O" }
+    },
+    "start-picker": {
+      "suggested_key": { "default": "Alt+Shift+C" },
+      "description": "골라 숨기기 켜기/끄기 (켤 때 진단 모드가 꺼져 있으면 함께 켬)"
+    },
+    "toggle-diagnose": {
+      "suggested_key": { "default": "Alt+Shift+X" },
+      "description": "진단 모드 켜기/끄기"
+    },
+    "toggle-banner": {
+      "suggested_key": { "default": "Alt+Shift+Z" },
+      "description": "이 사이트의 배너 숨기기 켜기/끄기"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["common.js", "content.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}

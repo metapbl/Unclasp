@@ -1,0 +1,23 @@
+# 빌드/배포 산출물
+*.zip
+*.crx
+*.pem
+dist/
+
+# 편집기·OS
+.vscode/
+Thumbs.db
+desktop.ini
+
+# 설정 백업(개인 사이트 목록이 들어갈 수 있음)
+settings-backup*.json
+
+# 로컬 테스트 페이지(진단 표시 확인용, 확장 코드가 아님)
+adtest/
+
+# 토르브라우저 확장
+tor/
+# 테스트 도구
+node_modules/
+test-results/
+playwright-report/
