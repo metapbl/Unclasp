@@ -80,6 +80,32 @@ test.describe("F11 접근성 손질 (D072)", () => {
     expect(o).toEqual(["solid", "2px"]);
   });
 
+  // 글자 노드를 직접 가진 요소 중 12px 보다 작은 것 (D073)
+  const smallText = (page) => page.evaluate(() => [...document.querySelectorAll("body *")]
+    .filter((e) => [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()))
+    .filter((e) => parseFloat(getComputedStyle(e).fontSize) < 12)
+    .map((e) => `${e.tagName.toLowerCase()}${e.id ? "#" + e.id : ""}.${e.className} ${getComputedStyle(e).fontSize}`));
+
+  test("팝업·옵션의 글자는 모두 12px 이상", async ({ context, extensionId }) => {
+    const popup = await context.newPage();
+    await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+    await expect(popup.locator("#rows .row")).toHaveCount(4);
+    await popup.evaluate(() => {
+      document.getElementById("legend").style.display = "block";
+      document.getElementById("selhead").style.display = "block";
+      document.getElementById("sels").innerHTML =
+        `<div class="s"><span class="t">.ad</span><span class="badge ok">숨김 1</span><button class="x">✕</button></div>`;
+      document.querySelector(".ov").textContent = "↺";
+      document.getElementById("msg").textContent = "시험";
+    });
+    expect(await smallText(popup)).toEqual([]);
+
+    const p = await context.newPage();
+    await p.goto(`chrome-extension://${extensionId}/options.html`);
+    await expect(p.locator("#gbody select")).toHaveCount(4);
+    expect(await smallText(p)).toEqual([]);
+  });
+
   for (const scheme of ["light", "dark"])
     test(`${scheme}: 꺼진 스위치 바탕은 화면 바탕과 3:1 이상`, async ({ context, extensionId }) => {
       const popup = await context.newPage();
