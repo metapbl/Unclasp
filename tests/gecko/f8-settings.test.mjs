@@ -47,7 +47,10 @@ suite("F8 설정", (t) => {
     assert.deepEqual(await poll(async () => (await site(t.driver))?.selectors), ["#t"]);
 
     await t.driver.switchTo().window(optionsTab);
-    await (await t.driver.findElement({ css: `${copy} option[value="true"]` })).click();
+    // 옵션이 저장 변경으로 목록을 다시 그리는 사이 찾은 요소는 사라질 수 있어 다시 찾아 누른다
+    assert.equal(await poll(async () => {
+      try { await (await t.driver.findElement({ css: `${copy} option[value="true"]` })).click(); return true; } catch { return false; }
+    }), true);
     await sleep(500);
     await t.driver.switchTo().window(page);
     const all = await store(t.driver).get();
