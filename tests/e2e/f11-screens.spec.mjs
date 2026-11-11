@@ -150,6 +150,17 @@ test.describe("F11 화면", () => {
     await expect(p.locator("#gbody td:first-child")).toHaveText(FEATURES);
   });
 
+  for (const width of [900, 600]) test(`옵션: 창 폭 ${width}px 에서 사이트 표의 호스트 칸이 140px 이상이고 페이지에 가로 스크롤이 없다`, async ({ context, extensionId, store }) => {
+    await store.set({ "s:long-host-name.example.com": { banner: false } });
+    const p = await context.newPage();
+    await p.setViewportSize({ width, height: 800 });
+    await p.goto(`chrome-extension://${extensionId}/options.html`);
+    const host = p.locator("#sbody td.host");
+    await expect(host).toHaveCount(1);
+    expect((await host.boundingBox()).width).toBeGreaterThanOrEqual(140);
+    expect(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
   test("선택기: 안내줄에 조작키가 모두 적혀 있다", async ({ open, diag, worker }) => {
     const page = await open(`<div id="a" style="min-height:40px">a</div>`);
     await diag(page, true);

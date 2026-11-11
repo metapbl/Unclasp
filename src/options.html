@@ -44,7 +44,7 @@
   #find { flex: 0 1 320px; font: inherit; font-size: 13px; padding: 7px 11px; border: 1px solid var(--line);
           border-radius: 7px; background: var(--card); color: var(--fg); }
   .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; align-items: start; }
-  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } #siteNav { position: static; max-height: 40vh; } }
+  @media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } #siteNav { position: static; max-height: 40vh; } }
   #siteNav { position: sticky; top: 100px; max-height: calc(100vh - 120px); overflow: auto;
              border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 6px; }
   #siteNav a { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
@@ -71,7 +71,8 @@
   .card > header h2 { font-size: 13.5px; margin: 0; flex: 1; min-width: 0; }
   /* 머리말 버튼은 늘어나지 않게 둔다. 좁은 창에서 줄이 접혀도 폭이 유지된다 */
   .card > header button { flex: none; }
-  .body { padding: 16px; }
+  /* 좁은 창에서 사이트 표가 카드보다 넓으면 카드 안에서 가로로 민다 */
+  .body { padding: 16px; overflow-x: auto; }
   .body > .desc:first-child { margin-top: 0; }
 
   /* 설명문. 왼쪽 세로줄로 제목·내용과 구분한다 */
@@ -87,7 +88,7 @@
   th.c, td.c { text-align: center; width: 84px; }
   th.x, td.x { width: 44px; text-align: right; }
   td.host { font-family: ui-monospace, Consolas, monospace; font-size: 13px;
-            word-break: break-all; }
+            word-break: break-all; min-width: 140px; }
 
   select { font: inherit; font-size: 12px; padding: 3px 6px; border-radius: 6px;
            border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
