@@ -2,12 +2,14 @@
 # 실행: pwsh scripts/build.ps1
 # 원본 manifest 는 하나다. Firefox 만 쓰는 background.scripts 는 Chrome 이 "requires manifest version of 2
 # or lower" 오류를 띄우므로 원본에 두지 않고, 여기서 xpi 안의 manifest 에만 넣는다.
+# -OutDir: 결과를 둘 폴더. 테스트는 임시 폴더를 넘겨 dist 의 배포 파일을 덮어쓰지 않는다
+param([string]$OutDir)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 
 $root = Split-Path $PSScriptRoot -Parent
 $src = Join-Path $root 'src'
-$dist = Join-Path $root 'dist'
+$dist = if ($OutDir) { $OutDir } else { Join-Path $root 'dist' }
 $manifestText = Get-Content (Join-Path $src 'manifest.json') -Raw
 $version = ($manifestText | ConvertFrom-Json).version
 

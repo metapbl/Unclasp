@@ -34,9 +34,11 @@ export const DOWNLOADS = path.join(TMP, "down");
 let xpi;
 function buildXpi() {
   if (xpi) return xpi;
-  execFileSync("pwsh", ["-NoProfile", "-File", "scripts/build.ps1"], { stdio: "ignore" });
+  // dist 의 배포 파일을 덮어쓰지 않게 임시 폴더에 만든다
+  const out = path.join(TMP, "build");
+  execFileSync("pwsh", ["-NoProfile", "-File", "scripts/build.ps1", "-OutDir", out], { stdio: "ignore" });
   const { version } = JSON.parse(readFileSync("src/manifest.json", "utf8"));
-  return (xpi = path.resolve(`dist/unclasp-${version}.xpi`));
+  return (xpi = path.join(out, `unclasp-${version}.xpi`));
 }
 
 // 시험 페이지는 127.0.0.1 의 로컬 서버로 띄운다. Selenium 에는 Playwright 의 route 가 없다.
@@ -58,7 +60,7 @@ export async function startServer() {
 export const KEY = "s:127.0.0.1";
 
 // driver.installAddon 은 xpi 를 임시 사본으로 설치하고 지워, Firefox 가 나중에 읽는 콘텐츠 스크립트를
-// 못 싣는다("Unable to load script"). dist 의 파일을 직접 임시 설치한다. 같은 id 로 다시 부르면
+// 못 싣는다("Unable to load script"). 빌드한 파일을 직접 임시 설치한다. 같은 id 로 다시 부르면
 // 업데이트라 저장소는 남고 onInstalled 가 돈다. 토르는 늘 사생활 보호 모드라 사용자가 실기기에서
 // 켜는 "사생활 보호 창에서 실행" 권한을 설치 전에 준다
 export async function install(driver) {
