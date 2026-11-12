@@ -36,7 +36,7 @@ suite("F8 설정", (t) => {
     await open(t, `<p id="t">글</p>`);
     const page = await t.driver.getWindowHandle();
     await t.driver.switchTo().newWindow("tab");
-    await t.driver.get(`${EXT_ORIGIN}/options.html`);
+    await t.driver.get(`${EXT_ORIGIN}/options.html#other.test`);
     const optionsTab = await t.driver.getWindowHandle();
     const copy = 'select[data-host="other.test"][data-key="copy"]';
     await poll(async () => (await t.driver.findElements({ css: copy })).length);
@@ -176,16 +176,16 @@ suite("F8 설정", (t) => {
     await t.driver.switchTo().window(back);
     assert.deepEqual(await site(t.driver), { selectors: ["#b"] });
   });
-  test("옵션: 모든 사이트는 사이트마다 요약 한 줄, 사이트를 고르면 그 사이트 것만, 찾기는 선택자로 거른다 (D035, D064)", async () => {
+  test("옵션: 모든 사이트에는 사이트별 줄이 없고, 사이트를 고르면 그 사이트 것만, 찾기는 선택자로 거른다 (D035, D075)", async () => {
     await store(t.driver).set({ "s:a.test": { selectors: [".ad-a1", ".ad-a2"] }, "s:b.test": { selectors: [".ad-b1"], ex: [".keep"] } });
     await t.driver.get(`${EXT_ORIGIN}/options.html`);
     const shown = () => t.driver.executeScript(`return [...document.querySelectorAll("button[data-sval]")]
       .filter((b) => b.checkVisibility()).map((b) => b.dataset.sval)`);
-    const heads = () => t.driver.executeScript(`return [...document.querySelectorAll("#selbox > div[data-host]")]
-      .filter((g) => g.checkVisibility()).map((g) => g.firstElementChild.innerText)`);
-    assert.deepEqual(await poll(async () => (await heads()).length === 2 && await heads()), ["a.test · 2개", "b.test · 1개"]);
-    assert.deepEqual(await shown(), []);
-    await (await t.driver.findElement({ css: '#selbox > div[data-host="b.test"] > div a' })).click();
+    const count = (css) => t.driver.executeScript(`return [...document.querySelectorAll(arguments[0])]
+      .filter((e) => e.checkVisibility()).length`, css);
+    assert.equal(await poll(async () => (await count(".hint")) === 3), true);
+    assert.equal(await count("#sbody > tr[data-host], #selbox > div[data-host], #exbox > div[data-host]"), 0);
+    await (await t.driver.findElement({ css: '#siteNav a[data-host="b.test"]' })).click();
     assert.deepEqual(await poll(async () => (await shown()).length === 1 && await shown()), [".ad-b1"]);
     assert.equal(await t.driver.executeScript("return document.getElementById('nHost').value"), "b.test");
     await (await t.driver.findElement({ css: "#siteNav a[data-all]" })).click();

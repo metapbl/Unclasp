@@ -372,7 +372,7 @@ function renderSites(conf) {
   });
 }
 
-// 세 목록의 사이트 묶음 머리. "모든 사이트" 보기에서는 이 줄만 남는다 (D064)
+// 세 목록의 사이트 묶음 머리. 찾기 결과에서 누르면 그 사이트 보기로 간다
 function groupHead(host, n) {
   return `<div><a href="#${encodeURIComponent(host)}">${esc(host)}</a> <span class="note">· ${n}개</span></div>`;
 }
@@ -667,7 +667,7 @@ function applyView() {
   const cur = currentHost();
   const q = ($("find")?.value || "").trim().toLowerCase();
   const hostHit = (h) => !q || h.toLowerCase().includes(q);
-  const sum = !cur && !q;   // 모든 사이트에 찾기 없음: 사이트마다 머리 한 줄만 (D064)
+  const sum = !cur && !q;   // 모든 사이트에 찾기 없음: 사이트별 줄을 모두 숨긴다 (D075)
 
   // 찾기에 맞는 줄이 있는 사이트
   const found = new Set();
@@ -680,12 +680,19 @@ function applyView() {
       any = any || ok;
     }
     if (any) found.add(h);
-    g.querySelector("ul.sel").hidden = sum;
-    g.hidden = !any || (!!cur && h !== cur);
+    g.hidden = sum || !any || (!!cur && h !== cur);
   }
   const match = (h) => hostHit(h) || found.has(h);
   for (const tr of document.querySelectorAll("#sbody > tr[data-host]")) {
-    tr.hidden = (!!cur && tr.dataset.host !== cur) || !match(tr.dataset.host);
+    tr.hidden = sum || (!!cur && tr.dataset.host !== cur) || !match(tr.dataset.host);
+  }
+  // 숨긴 줄이 있는 카드에는 표 대신 안내 한 줄을 둔다. 줄이 없는 카드는 원래의 빈 안내가 보인다
+  for (const hint of document.querySelectorAll(".hint")) {
+    const card = hint.closest(".body");
+    const rows = !!card.querySelector("tr[data-host], div[data-host]");
+    hint.hidden = !sum || !rows;
+    const table = card.querySelector("table");
+    if (table) table.hidden = sum && rows;
   }
   for (const a of document.querySelectorAll("#siteNav a")) {
     const h = a.dataset.host;

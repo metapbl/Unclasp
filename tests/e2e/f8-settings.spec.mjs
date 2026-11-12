@@ -133,16 +133,17 @@ test.describe("F8 팝업 사이트 설정 3상태", () => {
 });
 
 test.describe("F8 옵션 페이지", () => {
-  const options = async (context, extensionId) => {
+  // 사이트 표의 줄은 사이트를 고른 보기에서만 보인다 (D075)
+  const options = async (context, extensionId, hash = "") => {
     const p = await context.newPage();
-    await p.goto(`chrome-extension://${extensionId}/options.html`);
+    await p.goto(`chrome-extension://${extensionId}/options.html${hash}`);
     return p;
   };
   const row = (p, h, k) => p.locator(`select[data-host="${h}"][data-key="${k}"]`);
 
   test("사이트 목록의 3상태 셀렉트: ON·OFF 는 저장하고 기본값 따름은 지운다", async ({ context, extensionId, store }) => {
     await store.set({ "s:other.test": { banner: false } });
-    const p = await options(context, extensionId);
+    const p = await options(context, extensionId, "#other.test");
     await row(p, "other.test", "copy").selectOption("true");
     await expect.poll(async () => (await store.get())["s:other.test"]).toEqual({ banner: false, copy: true });
     await row(p, "other.test", "banner").selectOption("");
@@ -153,7 +154,7 @@ test.describe("F8 옵션 페이지", () => {
 
   test("옵션 페이지를 연 채 다른 탭의 선택기로 규칙을 추가하고 옵션에서 다른 사이트를 고쳐도 둘 다 남는다", async ({ context, extensionId, worker, open, store, diag }) => {
     await store.set({ "s:other.test": { banner: false } });
-    const p = await options(context, extensionId);
+    const p = await options(context, extensionId, "#other.test");
     await expect(row(p, "other.test", "copy")).toBeAttached();
 
     const page = await open(`<p id="t">글</p>`);
@@ -472,7 +473,7 @@ test.describe("삭제 확인창 (D036)", () => {
   async function options(context, extensionId) {
     const p = await context.newPage();
     const st = answer(p);
-    // 규칙 줄의 ✕ 는 사이트 보기에서 보인다. 모든 사이트 보기는 요약만 (D064)
+    // 규칙 줄의 ✕ 는 사이트 보기에서 보인다. 모든 사이트 보기에는 사이트별 줄이 없다 (D075)
     await p.goto(`chrome-extension://${extensionId}/options.html#uc.test`);
     await expect(p.locator("#quota")).not.toBeEmpty();
     return { p, st };
@@ -548,27 +549,38 @@ test.describe("옵션 긴 목록 (D035)", () => {
   const shownHosts = (p, sel, attr) => p.locator(`${sel}:visible`).evaluateAll(
     (els, a) => [...new Set(els.map((e) => e.getAttribute(a)))], attr);
 
-  const heads = (p, box) => p.locator(`${box} > div[data-host]:visible > div`).allInnerTexts();
+  // 사이트 표와 세 목록에서 보이는 사이트별 줄
+  const ROWS = "#sbody > tr[data-host]:visible, #selbox > div[data-host]:visible, #exbox > div[data-host]:visible, #textbox > div[data-host]:visible";
+  const THREE = { "s:a.test": { selectors: [".a1", ".a2"] }, "s:b.test": { selectors: [".b1"], ex: [".kb"] },
+                  "s:c.test": { selectors: [".c1", ".c2", ".c3", ".c4"], texts: [{ scope: "div", word: "광고" }] } };
 
-  test("모든 사이트 보기에서 세 목록은 사이트마다 호스트 · N개 한 줄이고 규칙 줄은 숨는다 (D064)", async ({ context, extensionId, store }) => {
-    await store.set({ "s:a.test": { selectors: [".a1", ".a2"] }, "s:b.test": { selectors: [".b1"], ex: [".kb"] },
-                      "s:c.test": { selectors: [".c1", ".c2", ".c3", ".c4"], texts: [{ scope: "div", word: "광고" }] } });
+  test("모든 사이트 보기에서 사이트 표와 세 목록에 사이트별 줄이 없고 카드마다 안내 한 줄이 보인다 (D075)", async ({ context, extensionId, store }) => {
+    await store.set(THREE);
     const { p } = await options(context, extensionId);
-    await expect.poll(() => heads(p, "#selbox")).toEqual(["a.test · 2개", "b.test · 1개", "c.test · 4개"]);
-    expect(await heads(p, "#exbox")).toEqual(["b.test · 1개"]);
-    expect(await heads(p, "#textbox")).toEqual(["c.test · 1개"]);
-    await expect(p.locator("button[data-sval]:visible, button[data-eval]:visible, button[data-th]:visible")).toHaveCount(0);
     await expect(p.locator("#siteNav a[data-host]")).toHaveCount(3);
+    await expect(p.locator(ROWS)).toHaveCount(0);
+    await expect(p.locator(".hint:visible")).toHaveText(Array(4).fill("왼쪽 목록에서 사이트를 고르거나 찾기칸에 글자를 넣으면 보입니다."));
   });
 
-  test("요약 줄을 누르면 그 사이트 보기로 가서 규칙이 모두 보인다 (D064)", async ({ context, extensionId, store }) => {
+  test("모든 사이트 보기의 본문 높이는 사이트 50곳일 때와 3곳일 때가 같다 (D075)", async ({ context, extensionId, store }) => {
+    await store.set(THREE);
+    const { p } = await options(context, extensionId);
+    await expect(p.locator("#siteNav a[data-host]")).toHaveCount(3);
+    const few = (await p.locator("main").boundingBox()).height;
+    await store.set(MANY);
+    await expect(p.locator("#siteNav a[data-host]")).toHaveCount(53);
+    expect((await p.locator("main").boundingBox()).height).toBe(few);
+  });
+
+  test("왼쪽 목록에서 사이트를 누르면 그 사이트의 표 줄과 규칙이 모두 보이고 안내는 사라진다 (D075)", async ({ context, extensionId, store }) => {
     await store.set(MANY);
     const { p } = await options(context, extensionId);
-    await expect(p.locator("#selbox > div[data-host]:visible")).toHaveCount(50);
-    await p.locator(`#selbox > div[data-host="${host(7)}"] > div a`).click();
+    await p.locator(`#siteNav a[data-host="${host(7)}"]`).click();
     await expect(p).toHaveURL(new RegExp(`#${host(7)}$`));
+    await expect(p.locator("#sbody > tr[data-host]:visible")).toHaveCount(1);
     await expect(p.locator("button[data-sval]:visible")).toHaveCount(10);
     await expect(p.locator("button[data-eval]:visible, button[data-th]:visible")).toHaveCount(2);
+    await expect(p.locator(".hint:visible")).toHaveCount(0);
   });
 
   test("사이트를 고르면 세 목록과 사이트 표가 그 사이트 것만 보이고 폼 사이트 칸이 채워진다", async ({ context, extensionId, store }) => {
@@ -582,10 +594,9 @@ test.describe("옵션 긴 목록 (D035)", () => {
     expect(await shownHosts(p, "button[data-th]", "data-th")).toEqual([host(7)]);
     expect(await shownHosts(p, "button[data-del]", "data-del")).toEqual([host(7)]);
     for (const id of ["#nHost", "#xHost", "#tHost"]) await expect(p.locator(id)).toHaveValue(host(7));
-    // 모든 사이트로 돌아가면 다시 요약 (D064)
+    // 모든 사이트로 돌아가면 사이트별 줄이 다시 숨는다 (D075)
     await p.locator("#siteNav a[data-all]").click();
-    await expect(p.locator("#selbox > div[data-host]:visible")).toHaveCount(50);
-    await expect(p.locator("button[data-sval]:visible")).toHaveCount(0);
+    await expect(p.locator(ROWS)).toHaveCount(0);
   });
 
   test("찾기에 선택자 일부를 넣으면 맞는 줄이 펼쳐지고 ✕ 는 확인창을 거치며, 비우면 요약으로 돌아간다", async ({ context, extensionId, store }) => {
@@ -601,8 +612,7 @@ test.describe("옵션 긴 목록 (D035)", () => {
 
 .ad-23-4`]);
     await p.fill("#find", "");
-    await expect(p.locator("#selbox > div[data-host]:visible")).toHaveCount(50);
-    await expect(p.locator("button[data-sval]:visible")).toHaveCount(0);
+    await expect(p.locator(ROWS)).toHaveCount(0);
   });
 
   test("고른 사이트 보기에서도 ✕ 는 확인창을 거쳐 지운다", async ({ context, extensionId, store }) => {

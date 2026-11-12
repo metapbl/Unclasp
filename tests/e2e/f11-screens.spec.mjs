@@ -154,7 +154,8 @@ test.describe("F11 화면", () => {
     await store.set({ "s:long-host-name.example.com": { banner: false } });
     const p = await context.newPage();
     await p.setViewportSize({ width, height: 800 });
-    await p.goto(`chrome-extension://${extensionId}/options.html`);
+    // 사이트 표의 줄은 사이트를 고른 보기에서만 보인다 (D075)
+    await p.goto(`chrome-extension://${extensionId}/options.html#long-host-name.example.com`);
     const host = p.locator("#sbody td.host");
     await expect(host).toHaveCount(1);
     expect((await host.boundingBox()).width).toBeGreaterThanOrEqual(140);
