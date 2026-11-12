@@ -44,9 +44,10 @@
   #find { flex: 0 1 320px; font: inherit; font-size: 13px; padding: 7px 11px; border: 1px solid var(--line);
           border-radius: 7px; background: var(--card); color: var(--fg); }
   .layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 24px; align-items: start; }
-  @media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } #siteNav { position: static; max-height: 40vh; } }
   #siteNav { position: sticky; top: 100px; max-height: calc(100vh - 120px); overflow: auto;
              border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 6px; }
+  /* 위의 #siteNav 규칙보다 뒤에 둬야 이긴다 */
+  @media (max-width: 760px) { .layout { grid-template-columns: minmax(0, 1fr); } #siteNav { position: static; max-height: 40vh; } }
   #siteNav a { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
                color: inherit; text-decoration: none; font-size: 13px; }
   #siteNav a:hover { background: var(--code); }

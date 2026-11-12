@@ -161,6 +161,19 @@ test.describe("F11 화면", () => {
     expect(await p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 
+  test("옵션: 창 폭 733px 에서 스크롤해도 사이트 목록이 본문과 겹치지 않고 높이가 화면의 40% 이하다", async ({ context, extensionId, store }) => {
+    await store.set(Object.fromEntries(Array.from({ length: 27 }, (_, i) => [`s:host${i}.example.com`, { banner: false }])));
+    const p = await context.newPage();
+    await p.setViewportSize({ width: 733, height: 1100 });
+    await p.goto(`chrome-extension://${extensionId}/options.html`);
+    await expect(p.locator("#siteNav a[data-host]")).toHaveCount(27);
+    await p.evaluate(() => window.scrollTo(0, 400));
+    const nav = await p.locator("#siteNav").boundingBox();
+    const main = await p.locator("main").boundingBox();
+    expect(nav.y + nav.height).toBeLessThanOrEqual(main.y);
+    expect(nav.height).toBeLessThanOrEqual(1100 * 0.4);
+  });
+
   test("선택기: 안내줄에 조작키가 모두 적혀 있다", async ({ open, diag, worker }) => {
     const page = await open(`<div id="a" style="min-height:40px">a</div>`);
     await diag(page, true);
