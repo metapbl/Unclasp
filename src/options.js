@@ -652,9 +652,12 @@ function renderNav(conf) {
   let html = `<a href="#" data-all><span class="h">모든 사이트</span><span class="note">${hosts.length}</span></a>`;
   for (const h of hosts) {
     const o = sites[h] || {};
+    // 빈 고리: 기능을 ON·OFF 로 정했거나 기본규칙을 끈 사이트 (D075)
+    const set = FEATURES.some((f) => typeof o[f.key] === "boolean") || o.nb === true;
     // 출처 색 점: 숨긴 요소·예외·텍스트 규칙이 있으면 하나씩
-    const pips = [["selectors", "p-custom"], ["ex", "p-ex"], ["texts", "p-text"]]
-      .filter(([k]) => (o[k] || []).length).map(([, c]) => `<i class="${c}"></i>`).join("");
+    const pips = (set ? `<i class="p-set" title="설정 바꿈"></i>` : "") +
+      [["selectors", "p-custom", "숨긴 항목"], ["ex", "p-ex", "예외"], ["texts", "p-text", "텍스트 규칙"]]
+        .filter(([k]) => (o[k] || []).length).map(([, c, t]) => `<i class="${c}" title="${t}"></i>`).join("");
     html += `<a href="#${encodeURIComponent(h)}" data-host="${escAttr(h)}">` +
             `<span class="h">${esc(h)}</span><span class="pips">${pips}</span></a>`;
   }

@@ -562,6 +562,15 @@ test.describe("옵션 긴 목록 (D035)", () => {
     await expect(p.locator(".hint:visible")).toHaveText(Array(4).fill("왼쪽 목록에서 사이트를 고르거나 찾기칸에 글자를 넣으면 보입니다."));
   });
 
+  test("왼쪽 목록의 설정 바꿈 점은 기능을 정했거나 기본규칙을 끈 사이트에만 붙는다 (D075)", async ({ context, extensionId, store }) => {
+    await store.set({ "s:on.test": { banner: true }, "s:nb.test": { nb: true }, "s:rule.test": { selectors: [".a"] } });
+    const { p } = await options(context, extensionId);
+    await expect(p.locator("#siteNav a[data-host]")).toHaveCount(3);
+    expect(await shownHosts(p, "#siteNav a:has(.p-set)", "data-host")).toEqual(["nb.test", "on.test"]);
+    await expect(p.locator('#siteNav a[data-host="on.test"] .p-set')).toHaveAttribute("title", "설정 바꿈");
+    await expect(p.locator('#siteNav a[data-host="rule.test"] .p-custom')).toHaveAttribute("title", "숨긴 항목");
+  });
+
   test("모든 사이트 보기의 본문 높이는 사이트 50곳일 때와 3곳일 때가 같다 (D075)", async ({ context, extensionId, store }) => {
     await store.set(THREE);
     const { p } = await options(context, extensionId);
