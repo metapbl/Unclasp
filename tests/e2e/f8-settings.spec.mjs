@@ -526,6 +526,19 @@ test.describe("삭제 확인창 (D036)", () => {
     await x.click();
     await expect.poll(async () => (await store.get())[KEY]).toEqual({ selectors: ["#b"] });
   });
+
+  // 특성: 묶음 10 전의 배지 세 가지와 title (D022)
+  test("팝업 내가 숨긴 항목 배지: N건·적용 안 됨·문법 오류", async ({ context, extensionId, worker, open, store }) => {
+    await store.set({ [KEY]: { selectors: ["#a", ".none", "p["] } });
+    const page = await open(`<p id="a">가</p>`);
+    const popup = await popupFor(context, extensionId, page, worker);
+    const badges = popup.locator("#sels .s .badge");
+    await expect(badges).toHaveText(["1건", "적용 안 됨", "문법 오류"]);
+    expect(await badges.evaluateAll((bs) => bs.map((b) => [b.className, b.title]))).toEqual([
+      ["badge ok", ""],
+      ["badge off", "현재 페이지에서 일치하는 요소가 없습니다. 사이트 구조가 바뀌었을 수 있습니다."],
+      ["badge bad", "이 선택자는 적용되지 않습니다."]]);
+  });
 });
 
 // D035·D048: 왼쪽 사이트 목록에서 고르면 오른쪽 카드가 그 사이트 것만, 찾기칸은 호스트·선택자·낱말로 거른다

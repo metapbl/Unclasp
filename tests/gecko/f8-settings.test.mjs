@@ -176,6 +176,19 @@ suite("F8 설정", (t) => {
     await t.driver.switchTo().window(back);
     assert.deepEqual(await site(t.driver), { selectors: ["#b"] });
   });
+  test("팝업 내가 숨긴 항목 배지: N건·적용 안 됨·문법 오류 (특성)", async () => {
+    await store(t.driver).set({ [KEY]: { selectors: ["#a", ".none", "p["] } });
+    await open(t, `<p id="a">가</p>`);
+    const back = await popup(t.driver);
+    const read = () => t.driver.executeScript(`return [...document.querySelectorAll("#sels .s .badge")]
+      .map((b) => [b.textContent, b.className, b.title])`);
+    await poll(async () => (await read()).length === 3);
+    assert.deepEqual(await read(), [
+      ["1건", "badge ok", ""],
+      ["적용 안 됨", "badge off", "현재 페이지에서 일치하는 요소가 없습니다. 사이트 구조가 바뀌었을 수 있습니다."],
+      ["문법 오류", "badge bad", "이 선택자는 적용되지 않습니다."]]);
+    await t.driver.switchTo().window(back);
+  });
   test("옵션: 모든 사이트에는 사이트별 줄이 없고, 사이트를 고르면 그 사이트 것만, 찾기는 선택자로 거른다 (D035, D075)", async () => {
     await store(t.driver).set({ "s:a.test": { selectors: [".ad-a1", ".ad-a2"] }, "s:b.test": { selectors: [".ad-b1"], ex: [".keep"] } });
     await t.driver.get(`${EXT_ORIGIN}/options.html`);
