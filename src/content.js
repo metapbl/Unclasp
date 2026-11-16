@@ -1634,6 +1634,13 @@
         });
 
         const valid = detail.filter((d) => !d.bad).map((d) => d.sel);
+        // D076: 맞는 요소가 모두 다른 내 선택자에 걸린 요소의 자손이면 그 바깥 선택자
+        for (const d of detail) {
+          if (d.bad || d.n === 0) continue;
+          const els = [...document.querySelectorAll(d.sel)];
+          const outer = valid.find((o) => o !== d.sel && els.every((el) => el.parentElement?.closest(o)));
+          if (outer) d.dup = outer;
+        }
         let custom = 0;
         if (valid.length) {
           try { custom = document.querySelectorAll(valid.join(",")).length; } catch { /* 무시 */ }

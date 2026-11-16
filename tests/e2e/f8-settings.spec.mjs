@@ -541,6 +541,49 @@ test.describe("삭제 확인창 (D036)", () => {
   });
 });
 
+// D076: 다른 내 선택자에 걸린 요소 안에만 맞는 선택자는 "중복"
+test.describe("선택자 중복 배지 (D076)", () => {
+  async function badges(context, extensionId, worker, open, store, selectors, html) {
+    await store.set({ [KEY]: { selectors } });
+    const page = await open(html);
+    const popup = await popupFor(context, extensionId, page, worker);
+    const b = popup.locator("#sels .s .badge");
+    await expect(b).toHaveCount(selectors.length);
+    return b;
+  }
+
+  test("맞는 요소가 모두 다른 내 선택자 안이면 중복이고 title 에 바깥 선택자", async ({ context, extensionId, worker, open, store }) => {
+    const b = await badges(context, extensionId, worker, open, store, ["#a", "#a .b"],
+      `<div id="a"><p class="b">가</p><p class="b">나</p></div>`);
+    await expect(b).toHaveText(["1건", "중복"]);
+    expect(await b.nth(1).getAttribute("class")).toBe("badge off");
+    expect(await b.nth(1).getAttribute("title")).toContain("#a");
+  });
+
+  test("일부만 겹치면 건수 그대로", async ({ context, extensionId, worker, open, store }) => {
+    const b = await badges(context, extensionId, worker, open, store, ["#a", ".b"],
+      `<div id="a"><p class="b">가</p></div><p class="b">나</p>`);
+    await expect(b).toHaveText(["1건", "2건"]);
+  });
+
+  test("같은 요소에 맞는 두 선택자는 서로 중복이 아니다", async ({ context, extensionId, worker, open, store }) => {
+    const b = await badges(context, extensionId, worker, open, store, ["#a", "p"], `<p id="a">가</p>`);
+    await expect(b).toHaveText(["1건", "1건"]);
+  });
+
+  test("기본 규칙에 걸린 요소 안은 중복이 아니다", async ({ context, extensionId, worker, open, store }) => {
+    const b = await badges(context, extensionId, worker, open, store, ["#in"],
+      `<div class="ad-banner"><p id="in">가</p></div>`);
+    await expect(b).toHaveText(["1건"]);
+  });
+
+  test("진단이 꺼져 있어도 보이고 다른 배지는 그대로", async ({ context, extensionId, worker, open, store }) => {
+    const b = await badges(context, extensionId, worker, open, store, ["#a", "#a .b", ".none", "p["],
+      `<div id="a"><p class="b">가</p></div>`);
+    await expect(b).toHaveText(["1건", "중복", "적용 안 됨", "문법 오류"]);
+  });
+});
+
 // D035·D048: 왼쪽 사이트 목록에서 고르면 오른쪽 카드가 그 사이트 것만, 찾기칸은 호스트·선택자·낱말로 거른다
 test.describe("옵션 긴 목록 (D035)", () => {
   const host = (n) => `site${String(n).padStart(2, "0")}.test`;

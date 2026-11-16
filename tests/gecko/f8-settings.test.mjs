@@ -189,6 +189,16 @@ suite("F8 설정", (t) => {
       ["문법 오류", "badge bad", "이 선택자는 적용되지 않습니다."]]);
     await t.driver.switchTo().window(back);
   });
+  test("팝업 내가 숨긴 항목: 다른 내 선택자 안에만 맞으면 중복 (D076)", async () => {
+    await store(t.driver).set({ [KEY]: { selectors: ["#a", "#a .b"] } });
+    await open(t, `<div id="a"><p class="b">가</p></div>`);
+    const back = await popup(t.driver);
+    const read = () => t.driver.executeScript(`return [...document.querySelectorAll("#sels .s .badge")]
+      .map((b) => [b.textContent, b.title.includes("#a")])`);
+    await poll(async () => (await read()).length === 2);
+    assert.deepEqual(await read(), [["1건", false], ["중복", true]]);
+    await t.driver.switchTo().window(back);
+  });
   test("옵션: 모든 사이트에는 사이트별 줄이 없고, 사이트를 고르면 그 사이트 것만, 찾기는 선택자로 거른다 (D035, D075)", async () => {
     await store(t.driver).set({ "s:a.test": { selectors: [".ad-a1", ".ad-a2"] }, "s:b.test": { selectors: [".ad-b1"], ex: [".keep"] } });
     await t.driver.get(`${EXT_ORIGIN}/options.html`);

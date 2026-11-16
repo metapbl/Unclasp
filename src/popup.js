@@ -213,6 +213,9 @@ function renderSels(detail) {
     } else if (d.n === 0) {
       b.className = "badge off"; b.textContent = "적용 안 됨";
       b.title = "현재 페이지에서 일치하는 요소가 없습니다. 사이트 구조가 바뀌었을 수 있습니다.";
+    } else if (d.dup) {
+      b.className = "badge off"; b.textContent = "중복";
+      b.title = `다른 선택자 안에 있어 이미 숨겨집니다: ${d.dup}`;
     } else {
       b.className = "badge ok"; b.textContent = `${d.n}건`;
     }
