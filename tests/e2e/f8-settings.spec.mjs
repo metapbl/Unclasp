@@ -18,7 +18,7 @@ async function popupFor(context, extensionId, page, worker) {
       .map(([name, c]) => ({ name, shortcut: c.suggested_key.default }));
   });
   await popup.goto(`chrome-extension://${extensionId}/popup.html`);
-  await expect(popup.locator("#rows .row")).toHaveCount(4);
+  await expect(popup.locator("#rows .row")).toHaveCount(5);   // 광고 차단 줄 (D089)
   await popup.evaluate(async ([t, h]) => {
     /* eslint-disable no-undef */
     tabId = t; host = h;
@@ -113,7 +113,7 @@ test.describe("F8 팝업 사이트 설정 3상태", () => {
     await sw(popup, "g-copy").click();
     await expect(popup.locator("#g-copy")).toBeChecked();
     await expect(popup.locator("#s-copy")).toBeChecked();
-    expect((await store.get()).global).toEqual({ banner: true, rightclick: false, copy: true, back: true });
+    expect((await store.get()).global).toEqual({ adblock: true, banner: true, rightclick: false, copy: true, back: true });   // 기본값에 광고 차단 (D085)
     expect((await store.get())[KEY]).toBeUndefined();
   });
 

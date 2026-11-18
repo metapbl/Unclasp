@@ -5,11 +5,12 @@
 
 // v1.8 저장 구조: 사이트마다 s:<host> 항목을 따로 쓴다
 var SITE_PREFIX = "s:";
-var FLAG_KEYS = ["banner", "rightclick", "copy", "back"];
-var DEFAULT_GLOBAL = { banner: true, rightclick: false, copy: false, back: true };
+var FLAG_KEYS = ["adblock", "banner", "rightclick", "copy", "back"];
+var DEFAULT_GLOBAL = { adblock: true, banner: true, rightclick: false, copy: false, back: true };
 
-// 팝업·옵션의 기능 줄. short 는 옵션 표 머리에만 쓴다
+// 팝업·옵션의 기능 줄. short 는 옵션 표 머리에만 쓴다. 광고 차단이 맨 위 (D089)
 var FEATURES = [
+  { key: "adblock",    label: "광고 차단",           short: "광고" },
   { key: "banner",     label: "배너 숨기기",         short: "배너" },
   { key: "rightclick", label: "우클릭 방지 해제",     short: "우클릭" },
   { key: "copy",       label: "복사 방지 해제",       short: "복사" },

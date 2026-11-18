@@ -106,7 +106,7 @@ suite("F8 설정", (t) => {
   // D052: 이쪽은 팝업이 닫히지 않고 브라우저 단축키가 그대로 돈다. 팝업까지 처리하면 두 번 뒤집힌다
   test("팝업은 단축키를 막지 않는다", async () => {
     await t.driver.get(`${EXT_ORIGIN}/popup.html`);
-    await poll(() => t.driver.executeScript("return document.querySelectorAll('#rows .row').length === 4"));
+    await poll(() => t.driver.executeScript("return document.querySelectorAll('#rows .row').length === 5"));
     await sleep(300);
     assert.equal(await t.driver.executeScript(`
       const e = new KeyboardEvent("keydown", { altKey: true, shiftKey: true, code: "KeyX", cancelable: true, bubbles: true });
@@ -117,7 +117,7 @@ suite("F8 설정", (t) => {
   test("http·https 가 아닌 페이지에서는 사이트 스위치가 잠기고 저장 항목이 생기지 않는다", async () => {
     // 앞에 띄운 팝업은 자기 자신(moz-extension://)을 활성 탭으로 읽는다
     await t.driver.get(`${EXT_ORIGIN}/popup.html`);
-    await poll(() => t.driver.executeScript("return document.querySelectorAll('#rows .row').length === 4"));
+    await poll(() => t.driver.executeScript("return document.querySelectorAll('#rows .row').length === 5"));
     assert.equal(await poll(async () => (await text(t.driver, "#host")) === "(적용할 수 없는 페이지)"), true);
     for (const k of ["banner", "rightclick", "copy", "back"])
       assert.equal(await poll(() => t.driver.executeScript(`return document.getElementById("s-${k}").disabled`)), true, k);

@@ -43,7 +43,7 @@ test.describe("F9 백업·복구", () => {
     expect(name).toMatch(/^settings-backup-\d{4}-\d{2}-\d{2}\.json$/);
     expect(json).toEqual({
       schema: 2,
-      global: { banner: true, rightclick: false, copy: false, back: true },
+      global: { adblock: true, banner: true, rightclick: false, copy: false, back: true },   // D085
       sites: { "a.test": SITES["s:a.test"], "b.test": SITES["s:b.test"] }
     });
     await expect(msg(p)).toContainText("사이트 2개");
@@ -141,7 +141,7 @@ test.describe("F9 백업·복구", () => {
     await expect(msg(p)).toContainText("복구했습니다. 사이트 1개, 숨긴 항목 1건, 예외 1건, 텍스트 규칙 4건, 기본규칙 끔 1개.");
     expect(await store.get()).toEqual({
       schema: 2,
-      global: { banner: false, rightclick: false, copy: false, back: true },
+      global: { adblock: true, banner: false, rightclick: false, copy: false, back: true },   // D085
       "s:good.test": {
         banner: true, nb: true, ex: [".keep"], selectors: ["#ad"],
         texts: [
@@ -167,7 +167,7 @@ test.describe("F9 백업·복구", () => {
     expect(all["s:y.test"]).toEqual({ back: false });
     expect(all["s:z.test"]).toEqual({ banner: false });
     // global 이 없으면 기본값으로 쓴다
-    expect(all.global).toEqual({ banner: true, rightclick: false, copy: false, back: true });
+    expect(all.global).toEqual({ adblock: true, banner: true, rightclick: false, copy: false, back: true });   // D085
   });
 
   // D019: 위험 정규식 규칙은 버리고 미리보기에 따로 알린다

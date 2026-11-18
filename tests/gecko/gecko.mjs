@@ -178,7 +178,7 @@ export async function popup(driver) {
   await driver.setContext("content");
   const h = await poll(async () => (await driver.getAllWindowHandles()).find((x) => !before.has(x)));
   await driver.switchTo().window(h);
-  await poll(() => driver.executeScript("return document.querySelectorAll('#rows .row').length === 4"));
+  await poll(() => driver.executeScript("return document.querySelectorAll('#rows .row').length === 5"));
   await sleep(300);
   return page;
 }

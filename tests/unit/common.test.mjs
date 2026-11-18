@@ -16,6 +16,7 @@ test("콘텐츠 스크립트가 다시 주입돼 두 번 읽혀도 오류가 없
 test("hasContent: 기능 플래그는 boolean 일 때만, nb 는 true 일 때만 내용이다", () => {
   assert.equal(hasContent({ banner: false }), true);
   assert.equal(hasContent({ back: true }), true);
+  assert.equal(hasContent({ adblock: false }), true);   // D080: 광고 차단 키도 내용이다 (R§4 T6)
   assert.equal(hasContent({ banner: "false" }), false);
   assert.equal(hasContent({ banner: null }), false);
   assert.equal(hasContent({ nb: true }), true);
