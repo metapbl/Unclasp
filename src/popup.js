@@ -1,10 +1,3 @@
-const FEATURES = [
-  { key: "banner",     label: "배너 숨기기" },
-  { key: "rightclick", label: "우클릭 방지 해제" },
-  { key: "copy",       label: "복사 방지 해제" },
-  { key: "back",       label: "백스페이스 뒤로가기" }
-];
-
 let host = "";
 let tabId = null;
 
@@ -63,30 +56,8 @@ async function writeSite(site) {
 }
 
 /* ---------- 콘텐츠 스크립트 통신 ---------- */
-// 최상위 프레임에만 보낸다. 하위 프레임이 먼저 응답해 결과가 뒤바뀌는 일을 막는다.
-function ask(msg) {
-  return chrome.tabs.sendMessage(tabId, msg, { frameId: 0 }).then((res) => res ?? null, () => null);
-}
-
-// 확장 설치/새로고침 전에 열려 있던 탭에는 콘텐츠 스크립트가 없다
-async function ensureInjected() {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId, allFrames: true },
-      files: ["common.js", "content.js"]
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function askWithInject(msg) {
-  let res = await ask(msg);
-  if (res) return res;
-  if (!(await ensureInjected())) return null;
-  return await ask(msg);
-}
+const ask = (msg) => askTab(tabId, msg);
+const askWithInject = (msg) => reach(tabId, msg);
 
 /* ---------- UI ---------- */
 function build() {

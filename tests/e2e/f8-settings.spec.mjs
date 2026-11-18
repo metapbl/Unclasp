@@ -173,6 +173,49 @@ test.describe("F8 옵션 페이지", () => {
     // 열려 있던 옵션 페이지도 새 사이트를 보여준다
     await expect(row(p, "uc.test", "banner")).toBeAttached();
   });
+
+  // 옵션이 목록을 읽은 뒤 쓰기 전에 다른 탭이 고친 사이트를 옛 값으로 덮지 않는다 (R§4 T3)
+  test("옵션이 읽은 뒤 다른 곳에서 바뀐 사이트는 다른 사이트를 고쳐도 옛 값으로 덮이지 않는다", async ({ context, extensionId, store }) => {
+    await store.set({ "s:a.test": { banner: false }, "s:b.test": { selectors: ["#old"] } });
+    const p = await options(context, extensionId);
+    const b = await p.evaluate(async () => {
+      /* eslint-disable no-undef */
+      const base = (await read()).sites;
+      await chrome.storage.local.set({ "s:b.test": { selectors: ["#old", "#new"] } });
+      await writeSites({ ...base, "a.test": { banner: true } }, base);
+      /* eslint-enable no-undef */
+      return (await chrome.storage.local.get("s:b.test"))["s:b.test"];
+    });
+    expect(b).toEqual({ selectors: ["#old", "#new"] });
+    expect((await store.get())["s:a.test"]).toEqual({ banner: true });
+  });
+
+  // D077: 붙여 넣은 주소는 호스트만 남긴다. 페이지 쪽 키는 location.hostname 이다
+  for (const [input, host] of [["www.Example.com/news", "www.example.com"], ["example.com:8080", "example.com"],
+    ["https://한국.kr/a", "xn--3e0b707e.kr"], ["한국.kr", "xn--3e0b707e.kr"]]) {
+    test(`호스트 칸에 ${input} 를 넣으면 ${host} 로 저장된다 (D077)`, async ({ context, extensionId, store }) => {
+      const p = await options(context, extensionId);
+      await p.fill("#sHost", input);
+      await p.locator("#sHost").press("Enter");
+      await expect.poll(async () => Object.keys(await store.get()).filter((k) => k.startsWith("s:"))).toEqual([`s:${host}`]);
+    });
+  }
+
+  test("호스트 칸에 http·https 가 아닌 주소를 넣으면 저장하지 않고 오류를 보인다 (D077)", async ({ context, extensionId, store }) => {
+    const p = await options(context, extensionId);
+    await p.fill("#sHost", "file:///c:/x");
+    await p.locator("#sHost").press("Enter");
+    await expect(p.locator("#msg.err")).toContainText("호스트");
+    expect(Object.keys(await store.get()).filter((k) => k.startsWith("s:"))).toEqual([]);
+  });
+
+  test("복구 파일의 호스트도 주소로 풀어 저장한다 (D077)", async ({ context, extensionId, store }) => {
+    const p = await options(context, extensionId);
+    p.on("dialog", (d) => d.accept());
+    // eslint-disable-next-line no-undef
+    await p.evaluate(() => applyConf({ sites: { "Example.com:8080": { banner: false } } }));
+    await expect.poll(async () => (await store.get())["s:example.com"]).toEqual({ banner: false });
+  });
 });
 
 test.describe("F8 단축키 (배경 처리)", () => {

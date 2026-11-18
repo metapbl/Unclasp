@@ -59,8 +59,10 @@
     [WILL]: 1, [SRC_EX]: 2, [SRC_BASE]: 3, [SRC_CUSTOM]: 4, [TEXTHIT]: 5
   };
 
+  // 빈 조각에서 문법만 본다. document 로 하면 칠할 때마다 문서 전체를 훑는다
+  const EMPTY = document.createDocumentFragment();
   function isValid(sel) {
-    try { document.querySelector(sel); return true; } catch { return false; }
+    try { EMPTY.querySelector(sel); return true; } catch { return false; }
   }
 
   /* ---------- 스타일 ---------- */
@@ -1463,6 +1465,7 @@
 
   function startPicker() {
     if (window.top !== window) return false;   // 최상위 프레임에서만
+    if (!/^https?:$/.test(location.protocol)) return false;   // 저장 키는 http·https 호스트로만 (D078)
     if (picking) return true;
     picking = true;
     pickCount = 0;

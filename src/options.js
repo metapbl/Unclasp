@@ -1,10 +1,3 @@
-const FEATURES = [
-  { key: "banner",     label: "배너 숨기기",         short: "배너" },
-  { key: "rightclick", label: "우클릭 방지 해제",     short: "우클릭" },
-  { key: "copy",       label: "복사 방지 해제",       short: "복사" },
-  { key: "back",       label: "백스페이스 뒤로가기",   short: "백스페이스" }
-];
-
 const SCHEMA = 2;
 
 // 복구 파일 크기 상한. storage.sync 시절 한도(약 100KB)를 기준으로 정했고, local 로 옮긴 뒤에도
@@ -115,6 +108,8 @@ async function writeSitesNow(next, base, opts) {
 
   for (const [h, s] of Object.entries(map)) {
     if (!h || !hasContent(s)) continue;
+    // 기준과 같으면 이 변경이 고친 사이트가 아니다. 그 사이 다른 곳이 바꾼 값을 옛 값으로 덮지 않는다
+    if (!prune && base && Object.hasOwn(base, h) && stable(base[h]) === stable(s)) continue;
     const k = SITE_PREFIX + h;
     if (stable(all[k]) !== stable(s)) set[k] = s;
   }
@@ -166,11 +161,12 @@ function hideMsg() {
   el.classList.remove("err");
 }
 
+// 주소로 풀어 호스트만 남긴다. 경로·포트를 떼고 한글 도메인은 페이지의 location.hostname 처럼
+// 퓨니코드가 된다. 스킴이 없으면 http 로 본다 (D077)
 function normHost(raw) {
-  let s = (raw || "").trim();
+  const s = (raw || "").trim();
   if (!s) return "";
-  try { if (/^https?:\/\//i.test(s)) s = new URL(s).hostname; } catch { /* 무시 */ }
-  return s.replace(/^\/+|\/+$/g, "").toLowerCase();
+  return hostFromUrl(/^[a-z][a-z\d+.-]*:\/\//i.test(s) ? s : "http://" + s);
 }
 
 /* ---------- 입력 폼 공통 ---------- */

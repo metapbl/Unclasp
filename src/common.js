@@ -1,12 +1,20 @@
 // 배경·콘텐츠·팝업·옵션이 함께 쓰는 상수와 판정 함수.
 // 콘텐츠 스크립트는 executeScript 로 같은 탭에 다시 주입될 수 있으므로,
 // 두 번 읽혀도 재선언 오류가 나지 않게 const 대신 var 와 함수 선언으로 둔다.
-/* exported SITE_PREFIX, FLAG_KEYS, DEFAULT_GLOBAL, hostFromUrl, hasContent, stable, riskyRegex */
+/* exported SITE_PREFIX, FLAG_KEYS, DEFAULT_GLOBAL, FEATURES, hostFromUrl, hasContent, stable, riskyRegex, askTab, reach */
 
 // v1.8 저장 구조: 사이트마다 s:<host> 항목을 따로 쓴다
 var SITE_PREFIX = "s:";
 var FLAG_KEYS = ["banner", "rightclick", "copy", "back"];
 var DEFAULT_GLOBAL = { banner: true, rightclick: false, copy: false, back: true };
+
+// 팝업·옵션의 기능 줄. short 는 옵션 표 머리에만 쓴다
+var FEATURES = [
+  { key: "banner",     label: "배너 숨기기",         short: "배너" },
+  { key: "rightclick", label: "우클릭 방지 해제",     short: "우클릭" },
+  { key: "copy",       label: "복사 방지 해제",       short: "복사" },
+  { key: "back",       label: "백스페이스 뒤로가기",   short: "백스페이스" }
+];
 
 // chrome://extensions 는 hostname 이 "extensions" 로 잡힌다.
 // 저장 키는 http/https 호스트로만 만든다 (R§4 T4).
@@ -79,4 +87,31 @@ function stable(v) {
     (x && typeof x === "object" && !Array.isArray(x))
       ? Object.keys(x).sort().reduce((a, n) => (a[n] = x[n], a), {})
       : x);
+}
+
+/* ---------- 탭의 콘텐츠 스크립트와 말하기 (팝업·배경) ---------- */
+// 최상위 프레임에만 보낸다. 하위 프레임이 먼저 응답해 결과가 뒤바뀌는 일을 막는다. 실패하면 null
+function askTab(tabId, msg) {
+  return chrome.tabs.sendMessage(tabId, msg, { frameId: 0 }).then((res) => res ?? null, () => null);
+}
+
+// 확장 설치/새로고침 전에 열려 있던 탭에는 콘텐츠 스크립트가 없다
+async function injectContent(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, allFrames: true },
+      files: ["common.js", "content.js"]
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// 묻고, 응답이 없으면 주입한 뒤 다시 묻는다
+async function reach(tabId, msg) {
+  const res = await askTab(tabId, msg);
+  if (res) return res;
+  if (!(await injectContent(tabId))) return null;
+  return await askTab(tabId, msg);
 }

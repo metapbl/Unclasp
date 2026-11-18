@@ -105,32 +105,9 @@ function fail(tabId) {
   flash(tabId, "×", "#c0392b");
 }
 
-// 팝업과 같은 규칙: 최상위 프레임에만 보낸다
-function askTab(tabId, msg) {
-  return chrome.tabs.sendMessage(tabId, msg, { frameId: 0 }).then((res) => res ?? null, () => null);
-}
-
-// 확장 설치/새로고침 전에 열려 있던 탭에는 콘텐츠 스크립트가 없다
-async function injectContent(tabId) {
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId, allFrames: true },
-      files: ["common.js", "content.js"]
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// 콘텐츠 스크립트가 응답하는지 본다. 없으면(확장 새로 고침 전에 열린 탭) 주입한 뒤 다시 묻는다.
-// 다시 묻는 응답이 오기 전에 새 콘텐츠의 DOC_START 가 먼저 도착하므로, 그 뒤의 setDiag 가 지워지지 않는다
-async function reach(tabId) {
-  const res = await askTab(tabId, { type: "COUNT" });
-  if (res) return res;
-  if (!(await injectContent(tabId))) return null;
-  return await askTab(tabId, { type: "COUNT" });
-}
+// 확장 새로 고침 전에 열린 탭이면 주입한 뒤 다시 묻는다 (common.js reach). 다시 묻는 응답이 오기 전에
+// 새 콘텐츠의 DOC_START 가 먼저 도착하므로, 그 뒤의 setDiag 가 지워지지 않는다
+const reachCount = (tabId) => reach(tabId, { type: "COUNT" });
 
 function getDiag(tabId) {
   return chrome.storage.session.get(`diag:${tabId}`)
@@ -171,7 +148,7 @@ function writeSite(key, site) {
 }
 
 async function cmdDiagnose(tab) {
-  if (!(await reach(tab.id))) { fail(tab.id); return; }
+  if (!(await reachCount(tab.id))) { fail(tab.id); return; }
   // 현재 값은 콘텐츠의 state 가 아니라 session 을 기준으로 읽는다
   const on = !(await getDiag(tab.id));
   if (!(await setDiag(tab.id, on))) { fail(tab.id); return; }
@@ -189,7 +166,7 @@ async function waitDiag(tabId) {
 }
 
 async function cmdPicker(tab) {
-  const res = await reach(tab.id);
+  const res = await reachCount(tab.id);
   if (!res) { fail(tab.id); return; }
 
   // 켜져 있으면 끈다. 진단은 그대로 둔다 (D050)

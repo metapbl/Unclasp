@@ -17,8 +17,9 @@ export default [
     ignores: ["src/common.js"],
     languageOptions: {
       globals: {
-        SITE_PREFIX: "readonly", FLAG_KEYS: "readonly", DEFAULT_GLOBAL: "readonly",
-        hostFromUrl: "readonly", hasContent: "readonly", stable: "readonly", riskyRegex: "readonly"
+        SITE_PREFIX: "readonly", FLAG_KEYS: "readonly", DEFAULT_GLOBAL: "readonly", FEATURES: "readonly",
+        hostFromUrl: "readonly", hasContent: "readonly", stable: "readonly", riskyRegex: "readonly",
+        askTab: "readonly", injectContent: "readonly", reach: "readonly"
       }
     }
   },
