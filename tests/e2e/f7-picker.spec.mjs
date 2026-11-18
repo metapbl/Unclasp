@@ -1,4 +1,9 @@
 // F7 요소 선택기 — v1.17.0 동작 고정 (특성 테스트, D022)
+import { chromium } from "@playwright/test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { test, expect } from "./fixtures.mjs";
 
 const KEY = "s:uc.test";
@@ -330,4 +335,47 @@ test.describe("팝업 요소 선택 토글 (D032)", () => {
     await expect(page.locator("#__uc_pick")).not.toBeAttached();
     await expect(pickSw(popup)).not.toBeChecked();
   });
+});
+
+// 저장 키는 http·https 호스트로만 (D078). "파일 URL 접근 허용" 을 켜야 콘텐츠가 file:// 에 실려
+// 따로 띄운 브라우저에서 확장 관리 페이지의 API 로 켠다. Firefox·토르는 확장에 파일 접근을 주지 않는다
+test("파일 URL 접근을 켠 file:// 페이지에서 Alt+Shift+C 는 × 배지이고 빈 호스트 키를 쓰지 않는다 (D078)", async ({}, testInfo) => {
+  testInfo.setTimeout(60_000);
+  const ext = path.resolve("src");
+  const ctx = await chromium.launchPersistentContext("", {
+    channel: "msedge", args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`] });
+  try {
+    let [w] = ctx.serviceWorkers();
+    if (!w) w = await ctx.waitForEvent("serviceworker");
+    const id = new URL(w.url()).host;
+    const mgr = await ctx.newPage();
+    await mgr.goto("edge://extensions/");
+    await mgr.evaluate((x) => chrome.developerPrivate.updateExtensionConfiguration({ extensionId: x, fileAccess: true }), id);
+    expect((await mgr.evaluate((x) => chrome.developerPrivate.getExtensionInfo(x), id)).fileAccess.isEnabled).toBe(true);
+    w = ctx.serviceWorkers().at(-1);
+
+    const f = path.join(mkdtempSync(path.join(os.tmpdir(), "uc-file-")), "p.html");
+    writeFileSync(f, `<!doctype html><meta charset="utf-8"><title>t</title><p id="t">글</p>`);
+    const page = await ctx.newPage();
+    await page.goto(pathToFileURL(f).href);
+    await page.bringToFront();
+    // 콘텐츠 스크립트가 이 페이지에 있다
+    await expect.poll(() => w.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      return chrome.tabs.sendMessage(tab.id, { type: "COUNT" }, { frameId: 0 }).then((r) => !!r, () => false);
+    })).toBe(true);
+
+    const badge = await w.evaluate(async () => {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+      await cmdPicker(tab);   // eslint-disable-line no-undef
+      return chrome.action.getBadgeText({ tabId: tab.id });
+    });
+    expect(badge).toBe("×");
+    await expect(page.locator("#__uc_pick")).not.toBeAttached();
+    await page.click("#t");
+    await page.waitForTimeout(300);
+    expect(Object.keys(await w.evaluate(() => chrome.storage.local.get(null))).filter((k) => k.startsWith("s:"))).toEqual([]);
+  } finally {
+    await ctx.close();
+  }
 });
