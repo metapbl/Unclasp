@@ -151,6 +151,55 @@ test.describe("F12 영상 광고 넘기기", () => {
   });
 });
 
+// 팝업을 탭으로 열고 대상 탭을 넣어 다시 그린다 (f8 popupFor 와 같은 방법)
+async function popupFor(context, extensionId, page, worker) {
+  await page.bringToFront();
+  const id = await worker.evaluate(async () =>
+    (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0].id);
+  const popup = await context.newPage();
+  await popup.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(popup.locator("#rows .row")).toHaveCount(5);
+  await popup.evaluate(async ([t, h]) => {
+    /* eslint-disable no-undef */
+    tabId = t; host = h;
+    paint(await read());
+    await showCount();
+    /* eslint-enable no-undef */
+  }, [id, new URL(page.url()).hostname]);
+  return popup;
+}
+
+// D088: 팝업에 이 페이지(최상위 프레임)에서 넘긴 영상 광고와 숨긴 화면 광고 건수
+test.describe("F12 팝업 건수", () => {
+  test("영상 광고 1건을 넘긴 뒤 팝업에 넘긴 영상 광고 1건이 보인다", async ({ context, extensionId, worker, open }) => {
+    const page = await open(`<video title="Advertisement"></video>`);
+    await page.click("body");
+    await playAd(page, "video", "");
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+    const popup = await popupFor(context, extensionId, page, worker);
+    await expect(popup.locator("#adline")).toHaveText("넘긴 영상 광고 1건 · 숨긴 화면 광고 0건");
+  });
+
+  test("화면 광고가 있는 페이지는 숨긴 화면 광고 건수가 보인다", async ({ context, extensionId, worker }) => {
+    const page = await sitePage(context, "https://play.sooplive.com", `<div id="chat_ad">광고</div><p>본문</p>`);
+    const popup = await popupFor(context, extensionId, page, worker);
+    await expect(popup.locator("#adline")).toHaveText("넘긴 영상 광고 0건 · 숨긴 화면 광고 1건");
+  });
+
+  test("둘 다 0건이거나 이 사이트 광고 차단 OFF 면 줄이 보이지 않는다", async ({ context, extensionId, worker, open, store }) => {
+    const page = await open(`<p>본문</p>`);
+    const popup = await popupFor(context, extensionId, page, worker);
+    await expect(popup.locator("#count")).not.toHaveText("-");
+    await expect(popup.locator("#adline")).toBeHidden();
+
+    await store.set({ "s:play.sooplive.com": { adblock: false } });
+    const soop = await sitePage(context, "https://play.sooplive.com", `<div id="chat_ad">광고</div><p>본문</p>`);
+    const popup2 = await popupFor(context, extensionId, soop, worker);
+    await expect(popup2.locator("#count")).not.toHaveText("-");
+    await expect(popup2.locator("#adline")).toBeHidden();
+  });
+});
+
 // D084: 관찰한 사이트별 화면 광고 선택자 (AD_RESEARCH §7)
 const SCREEN = [
   ["YouTube", "https://www.youtube.com", `<div id="player-ads">광고</div><ytd-in-feed-ad-layout-renderer>광고</ytd-in-feed-ad-layout-renderer>`,

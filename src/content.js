@@ -753,6 +753,7 @@
   /* ---------- 영상 광고 넘기기 (F12, D081·D087) ---------- */
   const AD_WAIT = 1000;            // 감은 뒤 이 안에 광고가 끝나지 않으면 감기가 막힌 것으로 본다
   const gaveUp = new WeakSet();    // 감기가 막혀 그대로 둔 광고. 표식이 사라지면 다시 넘길 수 있다
+  let adSkipped = 0;               // 이 문서에서 넘긴 영상 광고. 팝업이 보인다 (D088)
 
   const isAd = (v) => v.isConnected && !v.ended && v.matches(AD_VIDEO);
 
@@ -770,6 +771,7 @@
       // 광고 묶음은 같은 video 가 다음 광고를 이어 튼다. 주소나 길이가 바뀌었으면 넘긴 것이다
       const next = isAd(v) && (v.currentSrc !== src || v.duration !== dur);
       if (isAd(v) && !next) { gaveUp.add(v); return; }
+      adSkipped++;
       chrome.runtime.sendMessage({ type: "AD_SKIP" }).catch(() => {});
       if (next && state.adblock && !v.paused) skipAd(v);
     }, AD_WAIT);
@@ -1716,6 +1718,8 @@
           nb: o.nb === true,
           exRules: Array.isArray(o.ex) ? o.ex.length : 0,
           exHits, willCollapse,
+          adblock: state.adblock, adSkipped,
+          adHidden: state.adblock && AD_SCREEN.length ? document.querySelectorAll(AD_SCREEN.join(",")).length : 0,
           collapsed: folded.length
         });
         return;

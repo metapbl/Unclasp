@@ -228,6 +228,11 @@ async function showCount() {
   if (res.textRules) line += ` · 텍스트 ${res.textHits}개 (규칙 ${res.textRules}건)`;
   el.textContent = line;
 
+  // 광고 차단 건수 (D088). 꺼져 있거나 둘 다 0 이면 줄을 숨긴다
+  const ad = document.getElementById("adline");
+  ad.hidden = !(res.adblock && (res.adSkipped || res.adHidden));
+  if (!ad.hidden) ad.textContent = `넘긴 영상 광고 ${res.adSkipped}건 · 숨긴 화면 광고 ${res.adHidden}건`;
+
   diagEl.disabled = false;
   diagEl.checked = !!res.diagnose;
   setPickState(!!res.diagnose, !!res.picking);
