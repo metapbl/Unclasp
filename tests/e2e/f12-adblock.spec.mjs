@@ -150,3 +150,45 @@ test.describe("F12 영상 광고 넘기기", () => {
     expect(v.t).toBeLessThan(5);
   });
 });
+
+// D084: 관찰한 사이트별 화면 광고 선택자 (AD_RESEARCH §7)
+const SCREEN = [
+  ["YouTube", "https://www.youtube.com", `<div id="player-ads">광고</div><ytd-in-feed-ad-layout-renderer>광고</ytd-in-feed-ad-layout-renderer>`,
+    ["#player-ads", "ytd-in-feed-ad-layout-renderer"]],
+  ["SOOP", "https://play.sooplive.com", `<div id="chat_ad">광고</div>`, ["#chat_ad"]],
+  ["치지직", "https://chzzk.naver.com", `<div id="live_rs_banner">광고</div><div id="live_end_banner">광고</div><div id="vod_end_banner">광고</div>`,
+    ["#live_rs_banner", "#live_end_banner", "#vod_end_banner"]]
+];
+
+test.describe("F12 화면 광고", () => {
+  for (const [name, origin, ads, sels] of SCREEN) test(`${name}: 화면 광고 선택자에 맞는 요소가 숨고 본문은 보인다`, async ({ context }) => {
+    const page = await sitePage(context, origin, `${ads}<p id="p">본문</p>`);
+    for (const s of sels) await expect(page.locator(s)).toBeHidden();
+    await expect(page.locator("#p")).toBeVisible();
+  });
+
+  test("이 사이트 광고 차단 OFF 면 화면 광고가 보인다", async ({ context, store }) => {
+    await store.set({ "s:www.youtube.com": { adblock: false } });
+    const page = await sitePage(context, "https://www.youtube.com", `<div id="player-ads">광고</div>`);
+    await page.waitForTimeout(500);
+    await expect(page.locator("#player-ads")).toBeVisible();
+  });
+
+  test("다른 사이트의 화면 광고 선택자는 이 사이트에서 쓰지 않는다", async ({ open }) => {
+    const page = await open(`<div id="player-ads">본문 상자</div><div id="chat_ad">채팅</div>`);
+    await page.waitForTimeout(500);
+    await expect(page.locator("#player-ads")).toBeVisible();
+    await expect(page.locator("#chat_ad")).toBeVisible();
+  });
+
+  // D086: 진단 모드에서는 숨기지 않고 기본 규칙과 같은 빨간 점선과 배지로 표시만 한다
+  test("진단 모드에서는 화면 광고가 숨지 않고 빨간 점선과 '광고 차단' 배지로 보인다", async ({ context, diag }) => {
+    const page = await sitePage(context, "https://chzzk.naver.com", `<div id="live_rs_banner" style="height:50px">광고</div><p>본문</p>`);
+    await diag(page, true);
+    const ad = page.locator("#live_rs_banner");
+    await expect(ad).toBeVisible();
+    await expect(ad).toHaveCSS("outline-style", "dashed");
+    await expect(ad).toHaveCSS("outline-color", "rgb(231, 76, 60)");
+    await expect(ad).toHaveAttribute("data-uc-why", /^광고 차단 · /);
+  });
+});

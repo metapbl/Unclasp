@@ -40,6 +40,20 @@
   ];
 
   const BASE_SEL = BASE.join(",");
+
+  /* ---------- 광고 차단 표식 (F12, AD_RESEARCH §7) ---------- */
+  // 사이트마다 [호스트, 광고 전용 video, 화면 광고]. 그 사이트에서만 쓴다. 화면 광고는 관찰한
+  // 정확한 이름만 넣는다 (D084). Google IMA 는 광고 video 에 title="Advertisement" 를 직접 붙여
+  // 어느 사이트에서나 같다
+  const AD_SITES = [
+    [["youtube.com"], "#movie_player.ad-showing video", ["#player-ads", "ytd-in-feed-ad-layout-renderer"]],
+    [["sooplive.com", "sooplive.co.kr"], "video#da_video, video#adVideo, video#PREVIEW_AD_PLAYER", ["#chat_ad"]],
+    [["chzzk.naver.com"], "#preAdVideoContainer video, .webplayer-internal-core-ad-ui video",
+      ["#live_rs_banner", "#live_end_banner", "#vod_end_banner"]]
+  ];
+  const AD_HERE = AD_SITES.filter(([hosts]) => hosts.some((h) => HOST === h || HOST.endsWith("." + h)));
+  const AD_VIDEO = ['video[title="Advertisement"]', ...AD_HERE.map(([, v]) => v)].join(",");
+  const AD_SCREEN = AD_HERE.flatMap(([, , s]) => s);
   const TEXTHIT  = "__uc_texthit";   // 진단 표시에만 붙인다
   const TEXT_MAX = 200;   // 이 글자 수를 넘으면 본문으로 보고 제외한다
 
@@ -235,6 +249,7 @@
       const fold = folded.filter((e) => e.isConnected).map(pathOf);
       if (fold.length) parts.push(fold.join(",") + FOLD_CSS);
     }
+    if (state.adblock && !state.diagnose && AD_SCREEN.length) parts.push(`${AD_SCREEN.join(",")}{display:none !important;}`);
     // 넘기는 중인 광고는 진단 모드에서도 가린다 (D081)
     const cover = [...covered].filter((e) => e.isConnected).map(pathOf);
     if (cover.length) parts.push(`${cover.join(",")}{opacity:0 !important;}`);
@@ -636,6 +651,11 @@
       }
     }
 
+    // 화면 광고는 진단 모드에서 숨기지 않고 기본 규칙과 같은 색으로 표시한다 (D086)
+    if (state.adblock) {
+      for (const s of AD_SCREEN) for (const el of document.querySelectorAll(s)) want(el, SRC_BASE, "광고 차단 · " + s);
+    }
+
     // 배너 숨기기가 꺼진 사이트에서도 무엇이 걸리는지는 알려준다.
     // 실제로 숨는 것이 없으니 회색 하나로만 표시한다.
     if (!state.banner) {
@@ -731,15 +751,6 @@
   startObserver();
 
   /* ---------- 영상 광고 넘기기 (F12, D081·D087) ---------- */
-  // 광고 전용 video 의 표식. 사이트 것은 그 사이트에서만 쓴다. Google IMA 는 광고 video 에
-  // title="Advertisement" 를 직접 붙여 어느 사이트에서나 같다 (AD_RESEARCH §7)
-  const AD_SITES = [
-    [["youtube.com"], "#movie_player.ad-showing video"],
-    [["sooplive.com", "sooplive.co.kr"], "video#da_video, video#adVideo, video#PREVIEW_AD_PLAYER"],
-    [["chzzk.naver.com"], "#preAdVideoContainer video, .webplayer-internal-core-ad-ui video"]
-  ];
-  const onHost = (hosts) => hosts.some((h) => HOST === h || HOST.endsWith("." + h));
-  const AD_VIDEO = ['video[title="Advertisement"]', ...AD_SITES.filter(([h]) => onHost(h)).map(([, s]) => s)].join(",");
   const AD_WAIT = 1000;            // 감은 뒤 이 안에 광고가 끝나지 않으면 감기가 막힌 것으로 본다
   const gaveUp = new WeakSet();    // 감기가 막혀 그대로 둔 광고. 표식이 사라지면 다시 넘길 수 있다
 
