@@ -106,7 +106,9 @@ test.describe("F12 영상 광고 넘기기", () => {
     ["SOOP 생방송", "https://play.sooplive.com", `<div id="videoLayer"><video id="da_video"></video></div>`, "#da_video"],
     ["SOOP 다시보기", "https://vod.sooplive.com", `<video id="adVideo"></video>`, "#adVideo"],
     ["치지직 생방송", "https://chzzk.naver.com", `<div id="preAdVideoContainer"><div><video></video></div></div>`, "#preAdVideoContainer video"],
-    ["치지직 다시보기", "https://chzzk.naver.com", `<div class="webplayer-internal-core-ad-ui"><div><video></video></div></div>`, ".webplayer-internal-core-ad-ui video"]
+    ["치지직 다시보기", "https://chzzk.naver.com", `<div class="webplayer-internal-core-ad-ui"><div><video></video></div></div>`, ".webplayer-internal-core-ad-ui video"],
+    // Dailymotion 자체 광고 SDK. 플레이어 틀(geo.dailymotion.com) 안에서 돈다 (실기기 Q104)
+    ["Dailymotion", "https://geo.dailymotion.com", `<main><div class="ad-container ad-container--background"><video class="ad-video"></video></div></main>`, "video.ad-video"]
   ]) test(`${name}: 광고 전용 video 가 끝까지 감기고 배지가 SKIP 이다`, async ({ context, worker }) => {
     const page = await sitePage(context, origin, body);
     await playAd(page, sel, `v.addEventListener("ended", () => v.remove());`);   // 사이트: 광고가 끝나면 광고 칸을 치운다
@@ -123,6 +125,25 @@ test.describe("F12 영상 광고 넘기기", () => {
     // D013: 진단·선택기를 쓰지 않는 동안 확장이 넣은 요소·속성·<style> 이 없다 (F10 흔적 검사)
     expect(await page.evaluate(() => [document.querySelector('[id^="__uc"], [class*="__uc"], [data-uc-why]'),
       document.querySelectorAll("style").length])).toEqual([null, 0]);
+  });
+
+  // D092: 광고 영상이 받아지지 않아 재생 이벤트가 없어도 건너뛰기 단추가 보이면 누른다 (실기기 Q104)
+  const STALLED = `<div id="movie_player" class="html5-video-player ad-showing"><video></video>
+    <button class="ytp-skip-ad-button" onclick="this.closest('#movie_player').classList.remove('ad-showing'); this.remove()">건너뛰기</button></div><p>본문</p>`;
+  test("YouTube: 광고 영상이 멈춰 있어도 보이는 건너뛰기 단추를 눌러 넘기고 배지가 SKIP 이다", async ({ context, worker }) => {
+    const page = await sitePage(context, "https://www.youtube.com", STALLED);
+    await expect(page.locator("#movie_player")).not.toHaveClass(/ad-showing/);
+    await expect(page.locator(".ytp-skip-ad-button")).toHaveCount(0);
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+  });
+
+  test("이 사이트 광고 차단 OFF 이거나 다른 사이트면 건너뛰기 단추를 누르지 않는다", async ({ context, store, open }) => {
+    await store.set({ "s:www.youtube.com": { adblock: false } });
+    const yt = await sitePage(context, "https://www.youtube.com", STALLED);
+    const other = await open(STALLED);
+    await yt.waitForTimeout(1500);
+    await expect(yt.locator(".ytp-skip-ad-button")).toHaveCount(1);
+    await expect(other.locator(".ytp-skip-ad-button")).toHaveCount(1);
   });
 
   // D086: 진단 모드에서도 영상 광고는 넘긴다

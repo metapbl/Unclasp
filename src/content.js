@@ -42,18 +42,22 @@
   const BASE_SEL = BASE.join(",");
 
   /* ---------- 광고 차단 표식 (F12, AD_RESEARCH §7) ---------- */
-  // 사이트마다 [호스트, 광고 전용 video, 화면 광고]. 그 사이트에서만 쓴다. 화면 광고는 관찰한
+  // 사이트마다 [호스트, 광고 전용 video, 화면 광고, 건너뛰기 단추]. 그 사이트에서만 쓴다. 화면 광고는 관찰한
   // 정확한 이름만 넣는다 (D084). Google IMA 는 광고 video 에 title="Advertisement" 를 직접 붙여
   // 어느 사이트에서나 같다
   const AD_SITES = [
-    [["youtube.com"], "#movie_player.ad-showing video", ["#player-ads", "ytd-in-feed-ad-layout-renderer"]],
+    [["youtube.com"], "#movie_player.ad-showing video", ["#player-ads", "ytd-in-feed-ad-layout-renderer"],
+      "#movie_player.ad-showing :is(.ytp-skip-ad-button, .ytp-ad-skip-button-modern, .ytp-ad-skip-button)"],
     [["sooplive.com", "sooplive.co.kr"], "video#da_video, video#adVideo, video#PREVIEW_AD_PLAYER", ["#chat_ad"]],
     [["chzzk.naver.com"], "#preAdVideoContainer video, .webplayer-internal-core-ad-ui video",
-      ["#live_rs_banner", "#live_end_banner", "#vod_end_banner"]]
+      ["#live_rs_banner", "#live_end_banner", "#vod_end_banner"]],
+    // 자체 광고 SDK(dm-sdk). 플레이어 틀(geo.dailymotion.com) 안 광고 칸의 video (D093)
+    [["dailymotion.com"], ".ad-container video.ad-video", []]
   ];
   const AD_HERE = AD_SITES.filter(([hosts]) => hosts.some((h) => HOST === h || HOST.endsWith("." + h)));
   const AD_VIDEO = ['video[title="Advertisement"]', ...AD_HERE.map(([, v]) => v)].join(",");
   const AD_SCREEN = AD_HERE.flatMap(([, , s]) => s);
+  const AD_SKIP_BTN = AD_HERE.map(([, , , b]) => b).filter(Boolean).join(",");
   const TEXTHIT  = "__uc_texthit";   // 진단 표시에만 붙인다
   const TEXT_MAX = 200;   // 이 글자 수를 넘으면 본문으로 보고 제외한다
 
@@ -785,6 +789,21 @@
     if (state.adblock && !v.paused && !covered.has(v) && !gaveUp.has(v)) skipAd(v);
   }
   for (const t of ["playing", "timeupdate"]) document.addEventListener(t, onMedia, true);
+
+  // 건너뛰기 단추가 보이면 누른다 (D092). 광고 영상이 받아지지 않아 재생 이벤트가 없어도 단추는 뜬다.
+  // 단추는 숨은 채 먼저 생기므로 보이는지 자주 본다. 건수는 단추마다 처음 누를 때만 센다
+  const pressed = new WeakSet();
+  function pressSkip() {
+    if (!state.adblock) return;
+    const b = document.querySelector(AD_SKIP_BTN);
+    if (!b || !b.getClientRects().length) return;
+    b.click();
+    if (pressed.has(b)) return;
+    pressed.add(b);
+    adSkipped++;
+    chrome.runtime.sendMessage({ type: "AD_SKIP" }).catch(() => {});
+  }
+  if (AD_SKIP_BTN) setInterval(pressSkip, 500);
 
   /* ---------- 입력 요소 판별 ---------- */
   const SAFE_INPUT_TYPES = new Set([
