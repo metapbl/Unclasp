@@ -83,7 +83,7 @@ const playAd = (page, css, setup) => page.evaluate(async ([src, sel, fn]) => {
 }, [AD, css, setup]);
 const video = (page, css) => page.evaluate((sel) => {
   const v = document.querySelector(sel);
-  return v && { muted: v.muted, ended: v.ended, t: v.currentTime, opacity: getComputedStyle(v).opacity };
+  return v && { muted: v.muted, ended: v.ended, t: v.currentTime, filter: getComputedStyle(v).filter };
 }, css);
 const badge = (page, worker) => page.bringToFront().then(() => worker.evaluate(async () => {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -98,7 +98,7 @@ test.describe("F12 영상 광고 넘기기", () => {
       v.addEventListener("ended", () => mp.classList.remove("ad-showing"));
       mp.classList.add("ad-showing");`);
     await expect.poll(() => video(page, "video").then((x) => x.ended)).toBe(true);
-    await expect.poll(() => video(page, "video"), { timeout: 3000 }).toMatchObject({ muted: false, opacity: "1" });
+    await expect.poll(() => video(page, "video"), { timeout: 3000 }).toMatchObject({ muted: false, filter: "none" });
     await expect.poll(() => badge(page, worker)).toBe("SKIP");
   });
 
@@ -125,13 +125,23 @@ test.describe("F12 영상 광고 넘기기", () => {
       document.querySelectorAll("style").length])).toEqual([null, 0]);
   });
 
+  // D086: 진단 모드에서도 영상 광고는 넘긴다
+  test("진단 모드가 켜져 있어도 영상 광고는 끝까지 감긴다", async ({ open, diag, worker }) => {
+    const page = await open(`<video title="Advertisement"></video><p>본문</p>`);
+    await diag(page, true);
+    await page.click("p");
+    await playAd(page, "video", "");
+    await expect.poll(() => video(page, "video").then((x) => x.ended)).toBe(true);
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+  });
+
   // D087: 감기가 막히면 1초 뒤 음소거·가림을 풀고 광고를 그대로 둔다
   test("감기가 안 먹는 광고는 그동안 소리가 꺼지고 가려졌다가 1초 뒤 풀린다", async ({ open }) => {
     const page = await open(`<video title="Advertisement"></video>`);
     await page.click("body");
     await playAd(page, "video", `v.addEventListener("seeking", () => { if (v.currentTime > 1) v.currentTime = 0.2; });`);
-    await expect.poll(() => video(page, "video")).toMatchObject({ muted: true, opacity: "0" });
-    await expect.poll(() => video(page, "video"), { timeout: 3000 }).toMatchObject({ muted: false, opacity: "1", ended: false });
+    await expect.poll(() => video(page, "video")).toMatchObject({ muted: true, filter: "brightness(0)" });
+    await expect.poll(() => video(page, "video"), { timeout: 3000 }).toMatchObject({ muted: false, filter: "none", ended: false });
     expect((await video(page, "video")).t).toBeLessThan(5);
   });
 
@@ -146,7 +156,7 @@ test.describe("F12 영상 광고 넘기기", () => {
     await playAd(page, "video", "");
     await page.waitForTimeout(1500);
     const v = await video(page, "video");
-    expect(v).toMatchObject({ muted: false, ended: false, opacity: "1" });
+    expect(v).toMatchObject({ muted: false, ended: false, filter: "none" });
     expect(v.t).toBeLessThan(5);
   });
 });
@@ -197,6 +207,15 @@ test.describe("F12 팝업 건수", () => {
     const popup2 = await popupFor(context, extensionId, soop, worker);
     await expect(popup2.locator("#count")).not.toHaveText("-");
     await expect(popup2.locator("#adline")).toBeHidden();
+  });
+
+  // 진단 모드에서는 화면 광고를 숨기지 않으므로 "숨긴" 건수에 넣지 않는다 (D086)
+  test("진단 모드에서는 숨긴 화면 광고 건수를 세지 않는다", async ({ context, extensionId, worker, diag }) => {
+    const page = await sitePage(context, "https://play.sooplive.com", `<div id="chat_ad">광고</div><p>본문</p>`);
+    await diag(page, true);
+    const popup = await popupFor(context, extensionId, page, worker);
+    await expect(popup.locator("#legend")).toBeVisible();
+    await expect(popup.locator("#adline")).toBeHidden();
   });
 });
 

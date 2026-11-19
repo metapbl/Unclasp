@@ -252,7 +252,7 @@
     if (state.adblock && !state.diagnose && AD_SCREEN.length) parts.push(`${AD_SCREEN.join(",")}{display:none !important;}`);
     // 넘기는 중인 광고는 진단 모드에서도 가린다 (D081)
     const cover = [...covered].filter((e) => e.isConnected).map(pathOf);
-    if (cover.length) parts.push(`${cover.join(",")}{opacity:0 !important;}`);
+    if (cover.length) parts.push(`${cover.join(",")}{filter:brightness(0) !important;}`);
     if (state.copy) parts.push(COPY_CSS);
     applyQuiet(parts.join("\n"));
   }
@@ -1719,7 +1719,7 @@
           exRules: Array.isArray(o.ex) ? o.ex.length : 0,
           exHits, willCollapse,
           adblock: state.adblock, adSkipped,
-          adHidden: state.adblock && AD_SCREEN.length ? document.querySelectorAll(AD_SCREEN.join(",")).length : 0,
+          adHidden: state.adblock && !state.diagnose && AD_SCREEN.length ? document.querySelectorAll(AD_SCREEN.join(",")).length : 0,
           collapsed: folded.length
         });
         return;
