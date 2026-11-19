@@ -20,6 +20,8 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   // 새 문서가 떴다. 새로 고침·다른 주소로 이동하면 진단을 끈다 (R§4 T15). 해시·pushState 는
   // 문서가 그대로라 이 메시지가 오지 않아 유지된다. onUpdated 는 그 둘에도 loading 을 주어 쓸 수 없다
   if (msg?.type === "DOC_START" && sender.frameId === 0) clearDiag(id);
+  // 콘텐츠가 영상 광고를 넘겼다 (F12, D088). 배지 글자는 영문 약자 (D053)
+  if (msg?.type === "AD_SKIP") flash(id, "SKIP", "#27ae60");
   // Firefox·토르의 평소 숨김. 사용자 시트는 페이지 DOM 에 드러나지 않는다 (D044). 새 것을 넣은 뒤 옛 것을
   // 지워 그 사이에 숨김이 풀리지 않게 한다. 지우기는 넣을 때와 같은 글자여야 한다
   if (msg?.type === "CSS") {

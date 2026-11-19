@@ -54,3 +54,99 @@ test.describe("F12 광고 차단 저장 키와 스위치 자리", () => {
     await expect.poll(async () => (await store.get())["s:a.test"]).toEqual({ adblock: false });
   });
 });
+
+// 광고 video 로 쓸 15초짜리 무음 WAV. 외부에 접속하지 않고 재생 길이·감기가 실제 미디어처럼 동작한다
+function silentWav(sec) {
+  const rate = 8000, n = rate * sec, b = Buffer.alloc(44 + n, 128);
+  b.write("RIFF", 0); b.writeUInt32LE(36 + n, 4); b.write("WAVEfmt ", 8); b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(rate, 24); b.writeUInt32LE(rate, 28);
+  b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write("data", 36); b.writeUInt32LE(n, 40);
+  return "data:audio/wav;base64," + b.toString("base64");
+}
+const AD = silentWav(15);
+
+// 실제 사이트 주소를 흉내 낸 시험 페이지. 요청은 여기서 응답해 밖으로 나가지 않는다
+async function sitePage(context, origin, body) {
+  await context.route(`${origin}/**`, (r) => r.fulfill({ contentType: "text/html; charset=utf-8",
+    body: `<!doctype html><meta charset="utf-8"><title>t</title><body>${body}</body>` }));
+  const page = await context.newPage();
+  await page.goto(origin + "/");
+  await page.click("body");   // 소리 있는 재생을 허용받는다
+  return page;
+}
+// 광고를 튼다. setup(v) 은 페이지 안에서 표식을 붙이고, 광고가 끝났을 때 사이트가 하는 일을 흉내 낸다
+const playAd = (page, css, setup) => page.evaluate(async ([src, sel, fn]) => {
+  const v = document.querySelector(sel);
+  v.src = src;
+  new Function("v", fn)(v);
+  await v.play();
+}, [AD, css, setup]);
+const video = (page, css) => page.evaluate((sel) => {
+  const v = document.querySelector(sel);
+  return v && { muted: v.muted, ended: v.ended, t: v.currentTime, opacity: getComputedStyle(v).opacity };
+}, css);
+const badge = (page, worker) => page.bringToFront().then(() => worker.evaluate(async () => {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  return chrome.action.getBadgeText({ tabId: tab.id });
+}));
+
+test.describe("F12 영상 광고 넘기기", () => {
+  test("YouTube: 플레이어에 ad-showing 이 붙은 광고는 끝까지 감기고 소리 상태가 돌아오며 배지가 SKIP 이다", async ({ context, worker }) => {
+    const page = await sitePage(context, "https://www.youtube.com",
+      `<div id="movie_player" class="html5-video-player"><video></video></div>`);
+    await playAd(page, "video", `const mp = document.getElementById("movie_player");
+      v.addEventListener("ended", () => mp.classList.remove("ad-showing"));
+      mp.classList.add("ad-showing");`);
+    await expect.poll(() => video(page, "video").then((x) => x.ended)).toBe(true);
+    await expect.poll(() => video(page, "video"), { timeout: 3000 }).toMatchObject({ muted: false, opacity: "1" });
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+  });
+
+  for (const [name, origin, body, sel] of [
+    ["SOOP 생방송", "https://play.sooplive.com", `<div id="videoLayer"><video id="da_video"></video></div>`, "#da_video"],
+    ["SOOP 다시보기", "https://vod.sooplive.com", `<video id="adVideo"></video>`, "#adVideo"],
+    ["치지직 생방송", "https://chzzk.naver.com", `<div id="preAdVideoContainer"><div><video></video></div></div>`, "#preAdVideoContainer video"],
+    ["치지직 다시보기", "https://chzzk.naver.com", `<div class="webplayer-internal-core-ad-ui"><div><video></video></div></div>`, ".webplayer-internal-core-ad-ui video"]
+  ]) test(`${name}: 광고 전용 video 가 끝까지 감기고 배지가 SKIP 이다`, async ({ context, worker }) => {
+    const page = await sitePage(context, origin, body);
+    await playAd(page, sel, `v.addEventListener("ended", () => v.remove());`);   // 사이트: 광고가 끝나면 광고 칸을 치운다
+    await expect(page.locator(sel)).toHaveCount(0);
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+  });
+
+  test("Google IMA: title=Advertisement 광고 video 는 어느 사이트에서나 끝까지 감기고, 넘긴 뒤 페이지에 흔적이 없다", async ({ open, worker }) => {
+    const page = await open(`<div id="ad-container"><video title="Advertisement"></video></div>`);
+    await page.click("body");
+    await playAd(page, "video", "");
+    await expect.poll(() => video(page, "video").then((x) => x.ended)).toBe(true);
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+    // D013: 진단·선택기를 쓰지 않는 동안 확장이 넣은 요소·속성·<style> 이 없다 (F10 흔적 검사)
+    expect(await page.evaluate(() => [document.querySelector('[id^="__uc"], [class*="__uc"], [data-uc-why]'),
+      document.querySelectorAll("style").length])).toEqual([null, 0]);
+  });
+
+  // D087: 감기가 막히면 1초 뒤 음소거·가림을 풀고 광고를 그대로 둔다
+  test("감기가 안 먹는 광고는 그동안 소리가 꺼지고 가려졌다가 1초 뒤 풀린다", async ({ open }) => {
+    const page = await open(`<video title="Advertisement"></video>`);
+    await page.click("body");
+    await playAd(page, "video", `v.addEventListener("seeking", () => { if (v.currentTime > 1) v.currentTime = 0.2; });`);
+    await expect.poll(() => video(page, "video")).toMatchObject({ muted: true, opacity: "0" });
+    await expect.poll(() => video(page, "video"), { timeout: 3000 }).toMatchObject({ muted: false, opacity: "1", ended: false });
+    expect((await video(page, "video")).t).toBeLessThan(5);
+  });
+
+  for (const [name, body, stored] of [
+    ["이 사이트 광고 차단 OFF 면 광고 video 를 건드리지 않는다", `<video title="Advertisement"></video>`, { "s:uc.test": { adblock: false } }],
+    ["표식이 없는 일반 video 는 건드리지 않는다", `<video></video>`, {}],
+    ["다른 사이트의 표식(치지직 광고 칸)은 이 사이트에서 쓰지 않는다", `<div id="preAdVideoContainer"><video></video></div>`, {}]
+  ]) test(name, async ({ open, store }) => {
+    await store.set(stored);
+    const page = await open(body);
+    await page.click("body");
+    await playAd(page, "video", "");
+    await page.waitForTimeout(1500);
+    const v = await video(page, "video");
+    expect(v).toMatchObject({ muted: false, ended: false, opacity: "1" });
+    expect(v.t).toBeLessThan(5);
+  });
+});

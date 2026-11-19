@@ -7,7 +7,7 @@
   const SITE_KEY = SITE_PREFIX + HOST;
 
   let state = {
-    banner: true, rightclick: false, copy: false, back: true,
+    adblock: true, banner: true, rightclick: false, copy: false, back: true,
     diagnose: false, selectors: [], texts: [], ex: [], nb: false
   };
 
@@ -179,6 +179,7 @@
 
   let textHits = new Map();   // 텍스트 규칙에 걸린 요소 → 배지 문구 (가장 안쪽만, 문서 순서)
   let folded = [];            // 접은 요소
+  const covered = new Set();  // 넘기는 동안 가린 광고 video (F12)
 
   /* ---------- 선택자 조립 ---------- */
   // ex 는 기본 선택자에만 적용한다. 사용자가 직접 등록한 selectors 는
@@ -234,6 +235,9 @@
       const fold = folded.filter((e) => e.isConnected).map(pathOf);
       if (fold.length) parts.push(fold.join(",") + FOLD_CSS);
     }
+    // 넘기는 중인 광고는 진단 모드에서도 가린다 (D081)
+    const cover = [...covered].filter((e) => e.isConnected).map(pathOf);
+    if (cover.length) parts.push(`${cover.join(",")}{opacity:0 !important;}`);
     if (state.copy) parts.push(COPY_CSS);
     applyQuiet(parts.join("\n"));
   }
@@ -725,6 +729,49 @@
     }
   }
   startObserver();
+
+  /* ---------- 영상 광고 넘기기 (F12, D081·D087) ---------- */
+  // 광고 전용 video 의 표식. 사이트 것은 그 사이트에서만 쓴다. Google IMA 는 광고 video 에
+  // title="Advertisement" 를 직접 붙여 어느 사이트에서나 같다 (AD_RESEARCH §7)
+  const AD_SITES = [
+    [["youtube.com"], "#movie_player.ad-showing video"],
+    [["sooplive.com", "sooplive.co.kr"], "video#da_video, video#adVideo, video#PREVIEW_AD_PLAYER"],
+    [["chzzk.naver.com"], "#preAdVideoContainer video, .webplayer-internal-core-ad-ui video"]
+  ];
+  const onHost = (hosts) => hosts.some((h) => HOST === h || HOST.endsWith("." + h));
+  const AD_VIDEO = ['video[title="Advertisement"]', ...AD_SITES.filter(([h]) => onHost(h)).map(([, s]) => s)].join(",");
+  const AD_WAIT = 1000;            // 감은 뒤 이 안에 광고가 끝나지 않으면 감기가 막힌 것으로 본다
+  const gaveUp = new WeakSet();    // 감기가 막혀 그대로 둔 광고. 표식이 사라지면 다시 넘길 수 있다
+
+  const isAd = (v) => v.isConnected && !v.ended && v.matches(AD_VIDEO);
+
+  // 소리를 끄고 가린 뒤 끝으로 감는다. 1초 뒤 광고가 끝났으면 넘긴 것, 그대로면 풀고 둔다
+  function skipAd(v) {
+    const muted = v.muted, src = v.currentSrc, dur = v.duration;
+    v.muted = true;
+    covered.add(v);
+    paint();
+    if (isFinite(dur) && dur > 0) v.currentTime = dur;
+    setTimeout(() => {
+      covered.delete(v);
+      paint();
+      v.muted = muted;
+      // 광고 묶음은 같은 video 가 다음 광고를 이어 튼다. 주소나 길이가 바뀌었으면 넘긴 것이다
+      const next = isAd(v) && (v.currentSrc !== src || v.duration !== dur);
+      if (isAd(v) && !next) { gaveUp.add(v); return; }
+      chrome.runtime.sendMessage({ type: "AD_SKIP" }).catch(() => {});
+      if (next && state.adblock && !v.paused) skipAd(v);
+    }, AD_WAIT);
+  }
+
+  // 재생이 시작되거나 이어질 때 본다. YouTube 는 같은 video 에 표식만 바뀌므로 timeupdate 도 듣는다
+  function onMedia(e) {
+    const v = e.target;
+    if (!(v instanceof HTMLVideoElement)) return;
+    if (!isAd(v)) { gaveUp.delete(v); return; }
+    if (state.adblock && !v.paused && !covered.has(v) && !gaveUp.has(v)) skipAd(v);
+  }
+  for (const t of ["playing", "timeupdate"]) document.addEventListener(t, onMedia, true);
 
   /* ---------- 입력 요소 판별 ---------- */
   const SAFE_INPUT_TYPES = new Set([
@@ -1567,6 +1614,7 @@
     const g = { ...DEFAULT_GLOBAL, ...(conf.global || {}) };
     const o = (conf.sites || {})[HOST] || {};
     return {
+      adblock:    o.adblock    ?? g.adblock,
       banner:     o.banner     ?? g.banner,
       rightclick: o.rightclick ?? g.rightclick,
       copy:       o.copy       ?? g.copy,
