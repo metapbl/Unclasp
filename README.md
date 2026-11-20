@@ -376,7 +376,7 @@ O·C·X·Z 를 모두 쓰므로 단축키가 확장으로 오지 않습니다. �
 - 자동 테스트: 단위 테스트와, Chromium 계열인 Edge 에 확장을 올려 돌리는 인수·특성 테스트,
   Firefox ESR·토르 브라우저에 xpi 를 임시 설치해 돌리는 인수 테스트가 있습니다.
 - 실기기 확인: 자동화가 안 되는 항목(단축키, 실제 사이트의 덮개, 영구 설치 등)은 기능 묶음마다
-  Chrome·Firefox ESR·토르 브라우저에서 손으로 확인합니다. 목록은
+  Chrome·Firefox ESR·토르 브라우저에서 손으로 확인합니다. Firefox·토르 쪽 목록은
   [tests/gecko/README.md](tests/gecko/README.md)에 있습니다.
 - 따로 확인하지 않은 것: Firefox Developer Edition·Nightly 는 ESR 과 같은 xpi 를 쓰지만 따로
   돌려 보지 않았습니다.
