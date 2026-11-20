@@ -30,7 +30,7 @@ v1.7 이하가 쓰던 `sites` 한 항목에 모든 사이트를 넣는 옛 형�
 
 해석 규칙은 `site?.feature ?? global[feature]` 입니다. 사이트 항목의 필드는 이렇습니다.
 
-- adblock / banner / rightclick / copy / back : 전역 기본값을 덮어쓰는 3-state 오버라이드. adblock(광고 차단)은 v1.26.0 에서 생겼고, 전역값에 이 키가 없으면 기본값 ON 을 따릅니다
+- adblock / banner / rightclick / copy / back : 전역 기본값을 덮어쓰는 3-state 오버라이드. adblock(광고 차단)은 전역값에 이 키가 없으면 기본값 ON 을 따릅니다
 - selectors : 직접 지정한 CSS 선택자 목록
 - texts : 텍스트 규칙 목록. `{ scope, word }` 에 일치 방식 `m` 은 `"eq"`(완전 일치)나
   `"re"`(정규식)이고 포함이면 키가 없습니다. 제외 단어가 있으면 `not` 배열이 붙습니다. 제외 단어가 없는 규칙에는 `not` 키 자체가 없습니다
