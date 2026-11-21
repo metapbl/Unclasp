@@ -8,7 +8,7 @@
   <a href="#설치"><img alt="Tor Browser 15" src="https://img.shields.io/badge/Tor_Browser-15-7D4698?style=flat-square&logo=torbrowser&logoColor=white"></a>
 </p>
 
-사이트의 배너·광고(영상광고 포함)차단, 백스페이스 뒤로가기 기능, 우클릭·복사 막기를 걷어내는 통합형 브라우저 확장프로그램 (Chrome · Firefox · Tor, Manifest V3)
+사이트의 배너·광고(영상광고 포함)차단, 우클릭·복사 허용 기능, 백스페이스 뒤로가기 기능이 하나의 확장프로그램으로 통합된 브라우저 확장 (Chrome · Firefox · Tor, Manifest V3)
 
 ## 무엇을 하나
 
