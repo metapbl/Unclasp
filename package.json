@@ -7,6 +7,7 @@
     "test": "node --test \"tests/unit/**/*.test.mjs\" && playwright test",
     "lint": "eslint src tests",
     "adtest": "playwright test -c tests/baseline",
+    "screens": "playwright test -c tests/screens",
     "test:gecko": "node --test --test-concurrency=1 \"tests/gecko/**/*.test.mjs\""
   },
   "devDependencies": {

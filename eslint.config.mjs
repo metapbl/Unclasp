@@ -31,7 +31,7 @@ export default [
   },
   {
     // e2e 테스트는 page.evaluate·worker.evaluate 안에서 페이지와 확장 API 를 쓴다
-    files: ["tests/e2e/**/*.mjs", "tests/baseline/**/*.mjs"],
+    files: ["tests/e2e/**/*.mjs", "tests/baseline/**/*.mjs", "tests/screens/**/*.mjs"],
     languageOptions: { globals: { ...globals.node, ...globals.browser, ...globals.webextensions } }
   }
 ];
