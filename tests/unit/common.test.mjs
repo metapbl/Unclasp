@@ -7,7 +7,7 @@ import vm from "node:vm";
 const SRC = readFileSync("src/common.js", "utf8");
 const ctx = vm.createContext({ URL });
 vm.runInContext(SRC, ctx);
-const { hasContent, hostFromUrl, stable, riskyRegex } = ctx;
+const { hasContent, hostFromUrl, stable, riskyRegex, isAdSkipText } = ctx;
 
 test("콘텐츠 스크립트가 다시 주입돼 두 번 읽혀도 오류가 없다", () => {
   assert.doesNotThrow(() => vm.runInContext(SRC, ctx));
@@ -61,4 +61,17 @@ test("riskyRegex: 겹치지 않은 반복, 이스케이프·문자 집합 안의
   for (const s of ["a+b+", "(ab)+", "광고|협찬", "(a|b)*", "(a+)", "(a+)?", "(a+){2}", "(a+){1,3}",
     "(\\+)+", "([+*])+", "(a\\*)*", "ad\\d+ sale"])
     assert.equal(riskyRegex(s), false, s);
+});
+
+// D107: 카운트다운형·광고 명시형만 광고 스킵 단추다. 단독 "스킵" 류는 인트로 건너뛰기와 겹쳐 뺀다
+test("isAdSkipText: 카운트다운형·광고 명시형 문구는 광고 스킵 단추다", () => {
+  for (const s of ["5초 후 스킵", "5 초 후 건너뛰기", " 12초 후 광고 건너뛰기 ", "Skip in 5", "Skip in5", "Skip Ad in 5s", "skip ad in 3",
+    "광고 건너뛰기", "광고 스킵", "Skip Ad", "skip ad", "Skip Ads"])
+    assert.equal(isAdSkipText(s), true, s);
+});
+
+test("isAdSkipText: 단독 스킵·인트로·다음 화·빈 글자는 아니다", () => {
+  for (const s of ["스킵", "건너뛰기", "Skip", "인트로 건너뛰기", "Skip Intro", "다음 화 5초 후 재생", "5초 후 다음 영상",
+    "Skip in", "광고", "", undefined])
+    assert.equal(isAdSkipText(s), false, String(s));
 });

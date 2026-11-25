@@ -18,7 +18,7 @@ export default [
     languageOptions: {
       globals: {
         SITE_PREFIX: "readonly", FLAG_KEYS: "readonly", DEFAULT_GLOBAL: "readonly", FEATURES: "readonly",
-        hostFromUrl: "readonly", hasContent: "readonly", stable: "readonly", riskyRegex: "readonly",
+        hostFromUrl: "readonly", hasContent: "readonly", stable: "readonly", riskyRegex: "readonly", isAdSkipText: "readonly",
         askTab: "readonly", injectContent: "readonly", reach: "readonly"
       }
     }

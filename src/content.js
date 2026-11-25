@@ -759,7 +759,23 @@
   const gaveUp = new WeakSet();    // 감기가 막혀 그대로 둔 광고. 표식이 사라지면 다시 넘길 수 있다
   let adSkipped = 0;               // 이 문서에서 넘긴 영상 광고. 팝업이 보인다 (D088)
 
-  const isAd = (v) => v.isConnected && !v.ended && v.matches(AD_VIDEO);
+  const isAd = (v) => v.isConnected && !v.ended && (v.matches(AD_VIDEO) || skipButtonAd(v));
+
+  // 사이트별 표식이 없는 플레이어 (D105, D111). 보이는 스킵 단추에서 최대 3단계 올라가 처음 video 를 품은
+  // 조상이 v 하나만 품으면 광고다. v 하나만 품은 가장 높은 조상(top) 안에서만 단추를 찾는다
+  function skipButtonAd(v) {
+    let top = null;
+    for (let a = v.parentElement; a && a.getElementsByTagName("video").length === 1; a = a.parentElement) top = a;
+    if (!top) return false;
+    for (const b of top.querySelectorAll('button, [role="button"]')) {
+      if (!isAdSkipText(b.textContent) || !b.getClientRects().length) continue;
+      let a = b.parentElement;
+      for (let i = 0; i < 3 && a && top.contains(a); i++, a = a.parentElement) {
+        if (a.contains(v)) return true;
+      }
+    }
+    return false;
+  }
 
   // 소리를 끄고 가린 뒤 끝으로 감는다. 1초 뒤 광고가 끝났으면 넘긴 것, 그대로면 풀고 둔다
   function skipAd(v) {
@@ -784,9 +800,9 @@
   // 재생이 시작되거나 이어질 때 본다. YouTube 는 같은 video 에 표식만 바뀌므로 timeupdate 도 듣는다
   function onMedia(e) {
     const v = e.target;
-    if (!(v instanceof HTMLVideoElement)) return;
+    if (!(v instanceof HTMLVideoElement) || !state.adblock) return;   // 꺼진 사이트에서는 단추 탐색도 하지 않는다
     if (!isAd(v)) { gaveUp.delete(v); return; }
-    if (state.adblock && !v.paused && !covered.has(v) && !gaveUp.has(v)) skipAd(v);
+    if (!v.paused && !covered.has(v) && !gaveUp.has(v)) skipAd(v);
   }
   for (const t of ["playing", "timeupdate"]) document.addEventListener(t, onMedia, true);
 

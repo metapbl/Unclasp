@@ -25,4 +25,26 @@ suite("F12 광고 차단", (t) => {
     assert.deepEqual(await t.driver.executeScript(`return [document.querySelector('[id^="__uc"], [class*="__uc"], [data-uc-why]'),
       document.querySelectorAll("style").length]`), [null, 0]);
   });
+
+  // D105·D107·D111: 사이트별 표식이 없는 플레이어. 본 영상과 한 칸에 붙은 광고 틀의 스킵 단추 글자로 알아본다
+  const layer = (btn) => `<div class="player"><video class="main"></video><div class="ad-layer">` +
+    `<div class="ad-body"><video></video></div><button>${btn}</button></div></div>`;
+  const play = (t) => t.driver.executeAsyncScript(`const [src, done] = arguments;
+    const v = document.querySelector(".ad-body video"); v.muted = true; v.src = src;
+    v.play().then(() => done(), () => done());`, silentWav(15));
+
+  test('"5초 후 스킵" 단추가 있는 틀의 광고 video 가 끝까지 감기고 배지가 SKIP 이다', async () => {
+    await open(t, layer("5초 후 스킵"));
+    await play(t);
+    assert.equal(await poll(() => t.driver.executeScript("return document.querySelector('.ad-body video').ended")), true);
+    assert.equal(await poll(async () => (await ext(t.driver, `(_, id) => browser.action.getBadgeText({ tabId: id })`)) === "SKIP"), true);
+  });
+
+  test('"인트로 건너뛰기" 단추가 있는 틀의 video 는 건드리지 않는다', async () => {
+    await open(t, layer("인트로 건너뛰기"));
+    await play(t);
+    await t.driver.sleep(1500);
+    assert.deepEqual(await t.driver.executeScript(`const v = document.querySelector(".ad-body video");
+      return [v.ended, v.currentTime < 5]`), [false, true]);
+  });
 });

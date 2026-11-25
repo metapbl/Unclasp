@@ -1,7 +1,7 @@
 // 배경·콘텐츠·팝업·옵션이 함께 쓰는 상수와 판정 함수.
 // 콘텐츠 스크립트는 executeScript 로 같은 탭에 다시 주입될 수 있으므로,
 // 두 번 읽혀도 재선언 오류가 나지 않게 const 대신 var 와 함수 선언으로 둔다.
-/* exported SITE_PREFIX, FLAG_KEYS, DEFAULT_GLOBAL, FEATURES, hostFromUrl, hasContent, stable, riskyRegex, askTab, reach */
+/* exported SITE_PREFIX, FLAG_KEYS, DEFAULT_GLOBAL, FEATURES, hostFromUrl, hasContent, stable, riskyRegex, isAdSkipText, askTab, reach */
 
 // v1.8 저장 구조: 사이트마다 s:<host> 항목을 따로 쓴다
 var SITE_PREFIX = "s:";
@@ -52,6 +52,14 @@ function hasContent(site) {
   return Array.isArray(site.texts) && site.texts.some(
     (r) => r && typeof r === "object" &&
            typeof r.word === "string" && r.word.trim().length > 0);
+}
+
+// 광고 스킵 단추 글자인지 (D107). 카운트다운형("5초 후 스킵", "Skip Ad in 5s")과 광고 명시형("광고 건너뛰기",
+// "Skip Ad")만. 단독 "스킵"·"Skip" 은 인트로 건너뛰기 같은 본 영상 단추와 겹쳐 보지 않는다
+function isAdSkipText(text) {
+  if (typeof text !== "string") return false;
+  return /^(?:\d+\s*초\s*후\s*(?:광고\s*)?(?:스킵|건너뛰기)|광고\s*(?:스킵|건너뛰기)|skip\s+ads?(?:\s+in\s*\d+\s*s?)?|skip\s+in\s*\d+\s*s?)$/i
+    .test(text.trim());
 }
 
 // 반복이 겹친 정규식인지 (D019). (a+)+ 처럼 반복 기호(+, *, {n,})가 붙은 묶음 안에 다시

@@ -182,6 +182,66 @@ test.describe("F12 영상 광고 넘기기", () => {
   });
 });
 
+// D105·D107~D111: 사이트별 표식이 없는 자체 제작 플레이어. 스킵 단추 글자와 가까운 틀로 광고를 알아본다
+const layer = (btn, inner = `<div class="ad-body"><video></video></div>`) =>
+  `<div class="player"><video class="main"></video><div class="ad-layer">${inner}${btn}</div></div><p>본문</p>`;
+const untouched = async (page, css) => {
+  await page.waitForTimeout(1500);
+  const v = await video(page, css);
+  expect(v).toMatchObject({ muted: false, ended: false, filter: "none" });
+  expect(v.t).toBeLessThan(5);
+};
+
+test.describe("F12 공용 스킵 단추 판정", () => {
+  for (const btn of [`<button>5초 후 스킵</button>`, `<button>Skip Ad</button>`, `<div role="button">5초 후 건너뛰기</div>`])
+  test(`${btn} 가 있는 틀의 광고 video 는 끝까지 감기고 배지가 SKIP, 팝업이 1건이다`, async ({ context, extensionId, open, worker }) => {
+    const page = await open(layer(btn));
+    await page.click("p");
+    await playAd(page, ".ad-body video", "");
+    await expect.poll(() => video(page, ".ad-body video").then((x) => x.ended)).toBe(true);
+    await expect.poll(() => video(page, ".ad-body video"), { timeout: 3000 }).toMatchObject({ muted: false, filter: "none" });
+    await expect.poll(() => badge(page, worker)).toBe("SKIP");
+    const popup = await popupFor(context, extensionId, page, worker);
+    await expect(popup.locator("#adline")).toHaveText("넘긴 영상 광고 1건 · 숨긴 화면 광고 0건");
+  });
+
+  // D111: 광고 틀이 본 영상과 같은 칸에 붙는 구조. 단추에서 처음 video 를 품은 조상은 광고 틀이다
+  test("본 영상과 한 칸에 있는 광고 틀에서는 광고 video 만 넘어가고 본 영상은 그대로다", async ({ open }) => {
+    const page = await open(layer(`<button>5초 후 스킵</button>`));
+    await page.click("p");
+    await playAd(page, ".ad-body video", "");
+    await expect.poll(() => video(page, ".ad-body video").then((x) => x.ended)).toBe(true);
+    await playAd(page, "video.main", "");
+    await untouched(page, "video.main");
+  });
+
+  for (const [name, body, stored] of [
+    ['"인트로 건너뛰기" 단추는 광고 표식이 아니다', layer(`<button>인트로 건너뛰기</button>`), {}],
+    ['단독 "스킵" 단추는 광고 표식이 아니다', layer(`<button>스킵</button>`), {}],
+    ["처음 video 를 품은 조상 안에 video 가 2개면 둘 다 건드리지 않는다",
+      layer(`<button>5초 후 스킵</button>`, `<div class="ad-body"><video></video></div><video class="other"></video>`), {}],
+    ["숨은 단추는 보지 않는다", layer(`<button style="display:none">5초 후 스킵</button>`), {}],
+    ["video 와 4단계 이상 떨어진 단추는 보지 않는다", layer(`<div><div><div><button>5초 후 스킵</button></div></div></div>`), {}],
+    ["이 사이트 광고 차단 OFF 면 건드리지 않는다", layer(`<button>5초 후 스킵</button>`), { "s:uc.test": { adblock: false } }]
+  ]) test(name, async ({ open, store }) => {
+    await store.set(stored);
+    const page = await open(body);
+    await page.click("p");
+    await playAd(page, ".ad-body video", "");
+    await untouched(page, ".ad-body video");
+  });
+
+  // D087·D109: 감기가 막히면 1초 뒤 풀고 그대로 둔다. 단추는 누르지 않는다
+  test("공용 판정에 걸린 광고인데 감기가 먹지 않으면 1초 뒤 음소거·가림이 풀리고 단추는 눌리지 않는다", async ({ open }) => {
+    const page = await open(layer(`<button onclick="this.dataset.hit = 1">5초 후 스킵</button>`));
+    await page.click("p");
+    await playAd(page, ".ad-body video", `v.addEventListener("seeking", () => { if (v.currentTime > 1) v.currentTime = 0.2; });`);
+    await expect.poll(() => video(page, ".ad-body video")).toMatchObject({ muted: true, filter: "brightness(0)" });
+    await expect.poll(() => video(page, ".ad-body video"), { timeout: 3000 }).toMatchObject({ muted: false, filter: "none", ended: false });
+    expect(await page.locator(".ad-layer button").getAttribute("data-hit")).toBeNull();
+  });
+});
+
 // 팝업을 탭으로 열고 대상 탭을 넣어 다시 그린다 (f8 popupFor 와 같은 방법)
 async function popupFor(context, extensionId, page, worker) {
   await page.bringToFront();
